@@ -15,7 +15,7 @@ function Profile() {
   const [storageWarning, setStorageWarning] = useState('')
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
-  const displayName = profile.fullName.trim() || 'Your Name'
+  const displayName = profile.fullName.trim() || 'User'
 
   useEffect(() => {
     if (!isEditing) return

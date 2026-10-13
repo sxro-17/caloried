@@ -4,7 +4,7 @@ export type ProfileData = { fullName: string; age: string; height: string; weigh
 
 export const profileStorageKey = 'caloried-profile-v1'
 const profileUpdatedEvent = 'caloried-profile-updated'
-export const defaultProfile: ProfileData = { fullName: 'Sittie Macabago', age: '', height: '', weight: '' }
+export const defaultProfile: ProfileData = { fullName: 'User', age: '', height: '', weight: '' }
 
 function isProfileData(value: unknown): value is ProfileData {
   if (!value || typeof value !== 'object') return false
@@ -42,6 +42,6 @@ export function useProfile() {
 
 export function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return 'CM'
+  if (parts.length === 0) return 'U'
   return parts.slice(0, 2).map((part) => part[0].toUpperCase()).join('')
 }

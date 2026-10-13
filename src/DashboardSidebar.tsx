@@ -20,7 +20,7 @@ function Icon({ name }: { name: IconName }) {
 function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' | 'settings' | 'help' | 'profile' }) {
   const [profile] = useProfile()
   const [menuOpen, setMenuOpen] = useState(false)
-  const profileName = profile.fullName.trim() || 'Your Name'
+  const profileName = profile.fullName.trim() || 'User'
   useEffect(() => {
     if (!menuOpen) return
     function closeOnEscape(event: KeyboardEvent) { if (event.key === 'Escape') setMenuOpen(false) }
