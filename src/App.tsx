@@ -13,6 +13,7 @@ import Signup from './Signup'
 import ForgotPassword from './ForgotPassword'
 import UpdatePassword from './UpdatePassword'
 import { AuthProvider } from './auth/AuthProvider'
+import { FoodEntriesProvider } from './FoodEntriesProvider'
 
 const features = [
   { title: 'Track Calories', description: 'Keep track of your daily calorie intake and stay on top of your goals.' },
@@ -137,7 +138,7 @@ function AppRoutes() {
 }
 
 function App() {
-  return <AuthProvider><AppRoutes /></AuthProvider>
+  return <AuthProvider><FoodEntriesProvider><AppRoutes /></FoodEntriesProvider></AuthProvider>
 }
 
 export default App

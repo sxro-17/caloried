@@ -1,19 +1,24 @@
-import { useEffect, useState } from 'react'
-
 export type MealCategory = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'
-export type FoodEntry = { id: string; date: string; foodName: string; mealCategory: MealCategory; servingSize: number; servingUnit: string; calories: number; protein: number; carbohydrates: number; fat: number }
-export type NutritionTotals = { calories: number; protein: number; carbohydrates: number; fat: number }
+export type MacroField = 'protein' | 'carbohydrates' | 'fat'
+export type FoodEntry = { id: string; date: string; foodName: string; mealCategory: MealCategory; servingSize: number; servingUnit: string; calories: number; protein: number | null; carbohydrates: number | null; fat: number | null }
+export type MacroCompleteness = 'empty' | 'complete' | 'partial'
+export type NutritionTotals = { calories: number; protein: number | null; carbohydrates: number | null; fat: number | null; macroCompleteness: Record<MacroField, MacroCompleteness> }
 
 export const mealCategories: MealCategory[] = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
 export const foodEntriesStorageKey = 'caloried-food-entries-v1'
 const foodEntriesUpdatedEvent = 'caloried-food-entries-updated'
 
 function isMealCategory(value: unknown): value is MealCategory { return typeof value === 'string' && mealCategories.includes(value as MealCategory) }
+function isValidMacro(value: unknown) { return value === undefined || value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0) }
 
 function isValidFoodEntry(value: unknown): value is FoodEntry {
   if (!value || typeof value !== 'object') return false
   const entry = value as Partial<FoodEntry>
-  return typeof entry.id === 'string' && typeof entry.date === 'string' && typeof entry.foodName === 'string' && isMealCategory(entry.mealCategory) && typeof entry.servingUnit === 'string' && typeof entry.servingSize === 'number' && Number.isFinite(entry.servingSize) && entry.servingSize > 0 && typeof entry.calories === 'number' && Number.isFinite(entry.calories) && entry.calories >= 0 && typeof entry.protein === 'number' && Number.isFinite(entry.protein) && entry.protein >= 0 && typeof entry.carbohydrates === 'number' && Number.isFinite(entry.carbohydrates) && entry.carbohydrates >= 0 && typeof entry.fat === 'number' && Number.isFinite(entry.fat) && entry.fat >= 0
+  return typeof entry.id === 'string' && typeof entry.date === 'string' && typeof entry.foodName === 'string' && isMealCategory(entry.mealCategory) && typeof entry.servingUnit === 'string' && typeof entry.servingSize === 'number' && Number.isFinite(entry.servingSize) && entry.servingSize > 0 && typeof entry.calories === 'number' && Number.isFinite(entry.calories) && entry.calories >= 0 && isValidMacro(entry.protein) && isValidMacro(entry.carbohydrates) && isValidMacro(entry.fat)
+}
+
+function normalizeFoodEntry(entry: FoodEntry): FoodEntry {
+  return { ...entry, protein: entry.protein ?? null, carbohydrates: entry.carbohydrates ?? null, fat: entry.fat ?? null }
 }
 
 export function loadFoodEntries(): FoodEntry[] {
@@ -21,7 +26,7 @@ export function loadFoodEntries(): FoodEntry[] {
     const storedEntries = localStorage.getItem(foodEntriesStorageKey)
     if (!storedEntries) return []
     const parsedEntries: unknown = JSON.parse(storedEntries)
-    return Array.isArray(parsedEntries) ? parsedEntries.filter(isValidFoodEntry) : []
+    return Array.isArray(parsedEntries) ? parsedEntries.filter(isValidFoodEntry).map(normalizeFoodEntry) : []
   } catch { return [] }
 }
 
@@ -33,17 +38,6 @@ export function saveFoodEntries(entries: FoodEntry[]) {
   } catch { return false }
 }
 
-export function useFoodEntries() {
-  const [entries, setEntries] = useState<FoodEntry[]>(loadFoodEntries)
-  useEffect(() => {
-    const syncEntries = () => setEntries(loadFoodEntries())
-    window.addEventListener('storage', syncEntries)
-    window.addEventListener(foodEntriesUpdatedEvent, syncEntries)
-    return () => { window.removeEventListener('storage', syncEntries); window.removeEventListener(foodEntriesUpdatedEvent, syncEntries) }
-  }, [])
-  return [entries, setEntries] as const
-}
-
 export function dateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
 export function isValidDateKey(value: string | null): value is string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
@@ -53,5 +47,13 @@ export function isValidDateKey(value: string | null): value is string {
 }
 export function dateFromKey(value: string) { const [year, month, day] = value.split('-').map(Number); return new Date(year, month - 1, day) }
 export function getEntriesForDate(entries: FoodEntry[], date: string) { return entries.filter((entry) => entry.date === date) }
-export function calculateNutritionTotals(entries: FoodEntry[]): NutritionTotals { return entries.reduce((totals, entry) => ({ calories: totals.calories + entry.calories, protein: totals.protein + entry.protein, carbohydrates: totals.carbohydrates + entry.carbohydrates, fat: totals.fat + entry.fat }), { calories: 0, protein: 0, carbohydrates: 0, fat: 0 }) }
+export function calculateNutritionTotals(entries: FoodEntry[]): NutritionTotals {
+  const macroFields: MacroField[] = ['protein', 'carbohydrates', 'fat']
+  const macroCompleteness = Object.fromEntries(macroFields.map((field) => {
+    const knownCount = entries.filter((entry) => entry[field] !== null).length
+    return [field, entries.length === 0 ? 'empty' : knownCount === entries.length ? 'complete' : 'partial']
+  })) as Record<MacroField, MacroCompleteness>
+  const totalFor = (field: MacroField) => macroCompleteness[field] === 'partial' ? null : entries.reduce((total, entry) => total + (entry[field] ?? 0), 0)
+  return { calories: entries.reduce((total, entry) => total + entry.calories, 0), protein: totalFor('protein'), carbohydrates: totalFor('carbohydrates'), fat: totalFor('fat'), macroCompleteness }
+}
 export function calculateMealCalories(entries: FoodEntry[], mealCategory: MealCategory) { return entries.filter((entry) => entry.mealCategory === mealCategory).reduce((total, entry) => total + entry.calories, 0) }

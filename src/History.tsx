@@ -1,6 +1,8 @@
 import './History.css'
 import DashboardSidebar from './DashboardSidebar'
-import { calculateNutritionTotals, dateKey, getEntriesForDate, useFoodEntries } from './foodData'
+import { calculateNutritionTotals, dateKey, getEntriesForDate } from './foodData'
+import { FoodEntriesStatus } from './FoodEntriesStatus'
+import { useFoodEntries } from './FoodEntriesProvider'
 import { useNutritionGoals } from './settingsData'
 
 type DayRecord = { key: string; date: Date; calories: number; hasEntries: boolean }
@@ -9,7 +11,7 @@ function formatNumber(value: number) { return Number.isInteger(value) ? String(v
 function formatDay(date: Date) { return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date) }
 function formatRecordDate(date: Date) { return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date) }
 
-function getLastSevenDays(entries: ReturnType<typeof useFoodEntries>[0]): DayRecord[] {
+function getLastSevenDays(entries: ReturnType<typeof useFoodEntries>['entries']): DayRecord[] {
   const today = new Date()
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today)
@@ -21,7 +23,7 @@ function getLastSevenDays(entries: ReturnType<typeof useFoodEntries>[0]): DayRec
 }
 
 function History() {
-  const [entries] = useFoodEntries()
+  const { entries, loading: foodLoading, error: foodError } = useFoodEntries()
   const [goals] = useNutritionGoals()
   const days = getLastSevenDays(entries)
   const chartMax = Math.max(goals.calories, ...days.map((day) => day.calories))
@@ -33,6 +35,8 @@ function History() {
       <main className="dashboard-main history-main">
         <header className="history-header"><div><p className="dashboard-kicker">Look back at your progress</p><h1>History</h1><p className="history-description">See how your daily calorie intake has changed over the last seven days.</p></div></header>
 
+        <FoodEntriesStatus loading={foodLoading} error={foodError} />
+        {!foodLoading && !foodError && <>
         <section className="history-chart-card" aria-labelledby="calorie-history-title">
           <div className="history-section-heading"><div><p className="dashboard-kicker">Last 7 days</p><h2 id="calorie-history-title">Calorie History</h2></div><span className="history-goal-label">Goal: {goals.calories.toLocaleString()} kcal</span></div>
           <div className="history-chart" role="img" aria-label="Bar chart showing calorie intake for the last seven days">
@@ -43,6 +47,7 @@ function History() {
         </section>
 
         <section className="daily-records-section" aria-labelledby="daily-records-title"><div className="history-section-heading"><div><p className="dashboard-kicker">Your daily overview</p><h2 id="daily-records-title">Daily Records</h2></div></div><div className="daily-records-list">{days.slice().reverse().map((day) => <a className={`daily-record ${day.hasEntries ? '' : 'empty-record'}`} href={`/food-log?date=${day.key}`} key={day.key}><div className="daily-record-date"><strong>{formatRecordDate(day.date)}</strong><span>{day.key === todayKey ? 'Today' : formatDay(day.date)}</span></div><div className="daily-record-calories"><strong>{formatNumber(day.calories)} <small>kcal</small></strong><span>{day.hasEntries ? 'Food logged' : 'No food logged'}</span></div><div className="daily-record-goal"><span>Daily goal</span><strong>{goals.calories.toLocaleString()} kcal</strong></div><span className="daily-record-arrow" aria-hidden="true">→</span></a>)}</div></section>
+        </>}
       </main>
     </div>
   )
