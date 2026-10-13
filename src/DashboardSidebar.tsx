@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import './Dashboard.css'
 import logoSrc from './assets/caloried-logo.svg'
+import { getInitials, useProfile } from './profileData'
 
 type IconName = 'dashboard' | 'food' | 'history' | 'settings' | 'help'
 
@@ -16,7 +17,10 @@ function Icon({ name }: { name: IconName }) {
   return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>
 }
 
-function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' }) {
+function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' | 'profile' }) {
+  const [profile] = useProfile()
+  const profileName = profile.fullName.trim() || 'Your Name'
+
   return (
     <aside className="dashboard-sidebar">
       <a className="dashboard-logo" href="/" aria-label="Back to Calorie’d home"><img src={logoSrc} alt="Calorie’d" /></a>
@@ -27,11 +31,11 @@ function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history'
         <button className="dashboard-nav-item" type="button"><Icon name="settings" />Settings</button>
         <button className="dashboard-nav-item" type="button"><Icon name="help" />Help</button>
       </nav>
-      <div className="profile-card">
-        <div className="profile-avatar">SM</div>
-        <div><strong>Sittie Macabago</strong><span>Personal account</span></div>
+      <a className={`profile-card ${active === 'profile' ? 'active' : ''}`} href="/profile" aria-label="Open profile">
+        <div className="profile-avatar">{getInitials(profileName)}</div>
+        <div><strong>{profileName}</strong><span>Personal account</span></div>
         <span className="profile-more" aria-hidden="true">•••</span>
-      </div>
+      </a>
     </aside>
   )
 }

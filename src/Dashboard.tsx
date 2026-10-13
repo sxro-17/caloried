@@ -1,6 +1,7 @@
 import './Dashboard.css'
 import DashboardSidebar from './DashboardSidebar'
 import { calculateMealCalories, calculateNutritionTotals, caloriesGoal, dateKey, getEntriesForDate, macroGoals, mealCategories, useFoodEntries, type MealCategory } from './foodData'
+import { getInitials, useProfile } from './profileData'
 
 function formatNumber(value: number) { return Number.isInteger(value) ? String(value) : value.toFixed(1) }
 const dashboardToday = new Date()
@@ -8,6 +9,8 @@ const dashboardCurrentDate = new Intl.DateTimeFormat('en-US', { weekday: 'long',
 
 function Dashboard() {
   const [entries] = useFoodEntries()
+  const [profile] = useProfile()
+  const displayName = profile.fullName.trim() || 'there'
   const todayEntries = getEntriesForDate(entries, dateKey(dashboardToday))
   const dailyTotals = calculateNutritionTotals(todayEntries)
   const caloriesRemaining = Math.max(caloriesGoal - dailyTotals.calories, 0)
@@ -23,7 +26,7 @@ function Dashboard() {
     <div className="dashboard-shell">
       <DashboardSidebar active="dashboard" />
       <main className="dashboard-main">
-        <header className="dashboard-header"><div><p className="dashboard-kicker">Your daily overview</p><h1>Good morning, Sittie<span>!</span></h1><p className="dashboard-date">{dashboardCurrentDate}</p></div><div className="header-avatar">SM</div></header>
+        <header className="dashboard-header"><div><p className="dashboard-kicker">Your daily overview</p><h1>Good morning, {displayName}<span>!</span></h1><p className="dashboard-date">{dashboardCurrentDate}</p></div><div className="header-avatar">{getInitials(profile.fullName)}</div></header>
 
         <section className="summary-grid" aria-label="Daily nutrition summary">
           <article className="summary-card calories-card"><div className="card-heading"><span>Daily Calories</span><span className="card-menu">•••</span></div><div className="calories-content"><div className="calorie-ring" style={{ background: `conic-gradient(var(--dashboard-deep) ${calorieProgress}%, #e9efeb 0)` }}><div className="calorie-ring-inner"><strong>{formatNumber(dailyTotals.calories)}</strong><span>of {caloriesGoal.toLocaleString()} kcal</span></div></div><div className="calories-copy"><strong>{formatNumber(caloriesRemaining)}</strong><span>calories remaining</span></div></div><div className="progress-track"><span style={{ width: `${calorieProgress}%` }} /></div></article>
