@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './FoodLog.css'
 import DashboardSidebar from './DashboardSidebar'
-import { calculateNutritionTotals, caloriesGoal, dateKey, getEntriesForDate, mealCategories, saveFoodEntries, type FoodEntry, type MealCategory, useFoodEntries } from './foodData'
+import { calculateNutritionTotals, caloriesGoal, dateFromKey, dateKey, getEntriesForDate, isValidDateKey, mealCategories, saveFoodEntries, type FoodEntry, type MealCategory, useFoodEntries } from './foodData'
 
 type FoodForm = { foodName: string; mealCategory: MealCategory; servingSize: string; servingUnit: string; calories: string; protein: string; carbohydrates: string; fat: string }
 type FoodErrors = Partial<Record<keyof FoodForm, string>>
@@ -12,7 +12,10 @@ function formatDate(date: Date) { return new Intl.DateTimeFormat('en-US', { week
 function formatNumber(value: number) { return Number.isInteger(value) ? String(value) : value.toFixed(1) }
 
 function FoodLog() {
-  const [selectedDate, setSelectedDate] = useState(() => new Date())
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const requestedDate = new URLSearchParams(window.location.search).get('date')
+    return isValidDateKey(requestedDate) ? dateFromKey(requestedDate) : new Date()
+  })
   const [entries, setEntries] = useFoodEntries()
   const [highlightedMeal, setHighlightedMeal] = useState<MealCategory | null>(() => {
     const requestedMeal = new URLSearchParams(window.location.search).get('meal')

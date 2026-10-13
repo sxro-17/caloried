@@ -3,6 +3,7 @@ import logoSrc from './assets/caloried-logo.svg'
 import cookieSrc from './assets/cookie-bite.svg'
 import Dashboard from './Dashboard'
 import FoodLog from './FoodLog'
+import History from './History'
 
 const features = [
   { title: 'Track Calories', description: 'Keep track of your daily calorie intake and stay on top of your goals.' },
@@ -101,6 +102,7 @@ function LandingPage() {
 function App() {
   if (window.location.pathname === '/dashboard') return <Dashboard />
   if (window.location.pathname === '/food-log') return <FoodLog />
+  if (window.location.pathname === '/history') return <History />
   return <LandingPage />
 }
 

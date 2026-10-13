@@ -46,6 +46,13 @@ export function useFoodEntries() {
 }
 
 export function dateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
+export function isValidDateKey(value: string | null): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+}
+export function dateFromKey(value: string) { const [year, month, day] = value.split('-').map(Number); return new Date(year, month - 1, day) }
 export function getEntriesForDate(entries: FoodEntry[], date: string) { return entries.filter((entry) => entry.date === date) }
 export function calculateNutritionTotals(entries: FoodEntry[]): NutritionTotals { return entries.reduce((totals, entry) => ({ calories: totals.calories + entry.calories, protein: totals.protein + entry.protein, carbohydrates: totals.carbohydrates + entry.carbohydrates, fat: totals.fat + entry.fat }), { calories: 0, protein: 0, carbohydrates: 0, fat: 0 }) }
 export function calculateMealCalories(entries: FoodEntry[], mealCategory: MealCategory) { return entries.filter((entry) => entry.mealCategory === mealCategory).reduce((total, entry) => total + entry.calories, 0) }

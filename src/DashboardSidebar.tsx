@@ -16,14 +16,14 @@ function Icon({ name }: { name: IconName }) {
   return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>
 }
 
-function DashboardSidebar({ active }: { active: 'dashboard' | 'food' }) {
+function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' }) {
   return (
     <aside className="dashboard-sidebar">
       <a className="dashboard-logo" href="/" aria-label="Back to Calorie’d home"><img src={logoSrc} alt="Calorie’d" /></a>
       <nav className="dashboard-nav" aria-label="Dashboard navigation">
         <a className={`dashboard-nav-item ${active === 'dashboard' ? 'active' : ''}`} href="/dashboard"><Icon name="dashboard" />Dashboard</a>
         <a className={`dashboard-nav-item ${active === 'food' ? 'active' : ''}`} href="/food-log"><Icon name="food" />Food Log</a>
-        <button className="dashboard-nav-item" type="button"><Icon name="history" />History</button>
+        <a className={`dashboard-nav-item ${active === 'history' ? 'active' : ''}`} href="/history"><Icon name="history" />History</a>
         <button className="dashboard-nav-item" type="button"><Icon name="settings" />Settings</button>
         <button className="dashboard-nav-item" type="button"><Icon name="help" />Help</button>
       </nav>
