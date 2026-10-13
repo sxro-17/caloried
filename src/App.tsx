@@ -2,6 +2,7 @@ import './App.css'
 import logoSrc from './assets/caloried-logo.svg'
 import cookieSrc from './assets/cookie-bite.svg'
 import Dashboard from './Dashboard'
+import FoodLog from './FoodLog'
 
 const features = [
   { title: 'Track Calories', description: 'Keep track of your daily calorie intake and stay on top of your goals.' },
@@ -98,7 +99,9 @@ function LandingPage() {
 }
 
 function App() {
-  return window.location.pathname === '/dashboard' ? <Dashboard /> : <LandingPage />
+  if (window.location.pathname === '/dashboard') return <Dashboard />
+  if (window.location.pathname === '/food-log') return <FoodLog />
+  return <LandingPage />
 }
 
 export default App
