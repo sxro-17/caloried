@@ -17,7 +17,7 @@ function Icon({ name }: { name: IconName }) {
   return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>
 }
 
-function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' | 'settings' | 'profile' }) {
+function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' | 'settings' | 'help' | 'profile' }) {
   const [profile] = useProfile()
   const profileName = profile.fullName.trim() || 'Your Name'
 
@@ -29,7 +29,7 @@ function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history'
         <a className={`dashboard-nav-item ${active === 'food' ? 'active' : ''}`} href="/food-log"><Icon name="food" />Food Log</a>
         <a className={`dashboard-nav-item ${active === 'history' ? 'active' : ''}`} href="/history"><Icon name="history" />History</a>
         <a className={`dashboard-nav-item ${active === 'settings' ? 'active' : ''}`} href="/settings"><Icon name="settings" />Settings</a>
-        <button className="dashboard-nav-item" type="button"><Icon name="help" />Help</button>
+        <a className={`dashboard-nav-item ${active === 'help' ? 'active' : ''}`} href="/help"><Icon name="help" />Help</a>
       </nav>
       <a className={`profile-card ${active === 'profile' ? 'active' : ''}`} href="/profile" aria-label="Open profile">
         <div className="profile-avatar">{getInitials(profileName)}</div>

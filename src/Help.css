@@ -1,0 +1,21 @@
+.help-main { max-width: 980px; }
+.help-header { margin-bottom: 34px; }
+.help-header h1 { color: var(--dashboard-navy); font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.055em; line-height: 1.05; margin: 6px 0 10px; }
+.help-header > p:last-child { color: var(--dashboard-muted); line-height: 1.6; margin: 0; max-width: 570px; }
+.help-card { background: #fff; border: 1px solid #e3ebe7; border-radius: 22px; box-shadow: 0 14px 34px rgba(27, 62, 52, .06); padding: 31px 34px; }
+.help-section-heading { margin-bottom: 18px; }
+.help-section-heading h2, .good-to-know h2 { color: var(--dashboard-navy); font-size: 1.45rem; letter-spacing: -.035em; margin: 5px 0 0; }
+.faq-list { border-top: 1px solid #e8efeb; }
+.faq-item { border-bottom: 1px solid #e8efeb; }
+.faq-question { align-items: center; background: transparent; border: 0; color: var(--dashboard-navy); cursor: pointer; display: flex; font: inherit; font-size: .95rem; font-weight: 700; justify-content: space-between; padding: 20px 2px; text-align: left; width: 100%; }
+.faq-question:focus-visible { border-radius: 6px; outline: 3px solid rgba(154, 224, 194, .6); outline-offset: 2px; }
+.faq-icon { align-items: center; border: 1px solid #d4e5dc; border-radius: 50%; color: #5e9d7d; display: flex; flex: 0 0 24px; font-size: 1.2rem; font-weight: 400; height: 24px; justify-content: center; line-height: 1; margin-left: 18px; transition: transform .2s ease, background .2s ease; }
+.faq-item.open .faq-icon { background: var(--dashboard-mint); transform: rotate(45deg); }
+.faq-answer { padding: 0 48px 20px 2px; }
+.faq-answer p { color: var(--dashboard-muted); font-size: .88rem; line-height: 1.7; margin: 0; }
+.good-to-know { align-items: flex-start; background: var(--dashboard-mint); border-radius: 18px; display: flex; gap: 17px; margin-top: 25px; padding: 24px 27px; }
+.good-to-know-mark { align-items: center; background: #fff; border-radius: 50%; color: #5e9d7d; display: flex; flex: 0 0 27px; font-family: Georgia, serif; font-size: 1.1rem; font-style: italic; height: 27px; justify-content: center; }
+.good-to-know .dashboard-kicker { margin-bottom: 7px; }
+.good-to-know h2 { font-size: 1.15rem; margin: 0 0 7px; }
+.good-to-know p:last-child { color: #50675b; font-size: .87rem; line-height: 1.6; margin: 0; }
+@media (max-width: 650px) { .help-header { margin-bottom: 26px; }.help-card { border-radius: 17px; padding: 23px 18px; }.faq-question { font-size: .88rem; padding: 17px 1px; }.faq-answer { padding: 0 35px 18px 1px; }.faq-answer p { font-size: .84rem; }.good-to-know { gap: 12px; padding: 20px 18px; } }
