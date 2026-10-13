@@ -1,6 +1,7 @@
 import './App.css'
 import logoSrc from './assets/caloried-logo.svg'
 import cookieSrc from './assets/cookie-bite.svg'
+import Dashboard from './Dashboard'
 
 const features = [
   { title: 'Track Calories', description: 'Keep track of your daily calorie intake and stay on top of your goals.' },
@@ -9,7 +10,7 @@ const features = [
   { title: 'Daily Goals', description: 'Set personalized goals and make every day a step toward a healthier you.' },
 ]
 
-function App() {
+function LandingPage() {
   return (
     <div className="site-shell">
       <header className="site-header">
@@ -18,7 +19,7 @@ function App() {
           <a className="active" href="#home">Home</a>
           <a href="#features">Features</a>
           <a href="#about">About</a>
-          <a className="nav-cta" href="#get-started">Get Started</a>
+          <a className="nav-cta" href="/dashboard">Get Started</a>
         </nav>
       </header>
 
@@ -28,7 +29,7 @@ function App() {
             <p className="eyebrow">A simpler way to eat well</p>
             <h1>make every bite <em>calculated.</em></h1>
             <p className="hero-description">Calorie’d makes keeping track of your food feel clear, calm, and completely yours.</p>
-            <a className="button button-dark" href="#get-started">Get Started <span aria-hidden="true">↗</span></a>
+            <a className="button button-dark" href="/dashboard">Get Started <span aria-hidden="true">↗</span></a>
           </div>
 
           <div className="hero-art" aria-hidden="true">
@@ -83,7 +84,7 @@ function App() {
           <img className="cookie cookie-cta-right" src={cookieSrc} alt="" aria-hidden="true" />
           <p className="eyebrow">Ready when you are</p>
           <h2>Start making<br /><em>every bite count.</em></h2>
-          <a className="button button-light" href="#home">Get Started <span aria-hidden="true">↗</span></a>
+          <a className="button button-light" href="/dashboard">Get Started <span aria-hidden="true">↗</span></a>
         </section>
       </main>
 
@@ -94,6 +95,10 @@ function App() {
       </footer>
     </div>
   )
+}
+
+function App() {
+  return window.location.pathname === '/dashboard' ? <Dashboard /> : <LandingPage />
 }
 
 export default App
