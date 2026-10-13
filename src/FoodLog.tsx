@@ -2,32 +2,51 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './FoodLog.css'
 import DashboardSidebar from './DashboardSidebar'
 
-type FoodItem = { name: string; serving: string; calories: number }
-type Meal = { name: string; total: number; className: string; items: FoodItem[] }
-type FoodForm = { foodName: string; mealCategory: string; servingSize: string; servingUnit: string; calories: string; protein: string; carbohydrates: string; fat: string }
+type MealCategory = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'
+type FoodEntry = { id: string; date: string; foodName: string; mealCategory: MealCategory; servingSize: number; servingUnit: string; calories: number; protein: number; carbohydrates: number; fat: number }
+type FoodForm = { foodName: string; mealCategory: MealCategory; servingSize: string; servingUnit: string; calories: string; protein: string; carbohydrates: string; fat: string }
 type FoodErrors = Partial<Record<keyof FoodForm, string>>
 
-const meals: Meal[] = [
-  { name: 'Breakfast', total: 420, className: 'breakfast', items: [{ name: 'Oatmeal with berries', serving: '1 bowl', calories: 280 }, { name: 'Coffee with milk', serving: '1 cup', calories: 140 }] },
-  { name: 'Lunch', total: 560, className: 'lunch', items: [{ name: 'Grilled chicken salad', serving: '1 serving', calories: 410 }, { name: 'Whole wheat bread', serving: '2 slices', calories: 150 }] },
-  { name: 'Dinner', total: 680, className: 'dinner', items: [{ name: 'Baked salmon', serving: '1 fillet', calories: 390 }, { name: 'Rice and vegetables', serving: '1 plate', calories: 290 }] },
-  { name: 'Snacks', total: 182, className: 'snacks', items: [{ name: 'Greek yogurt', serving: '1 cup', calories: 120 }, { name: 'Almonds', serving: '12 pieces', calories: 62 }] },
-]
+const mealCategories: MealCategory[] = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
+const mealClassNames: Record<MealCategory, string> = { Breakfast: 'breakfast', Lunch: 'lunch', Dinner: 'dinner', Snacks: 'snacks' }
+const caloriesGoal = 2200
 
-const emptyForm = (mealCategory: string): FoodForm => ({ foodName: '', mealCategory, servingSize: '', servingUnit: 'grams', calories: '', protein: '', carbohydrates: '', fat: '' })
+const emptyForm = (mealCategory: MealCategory): FoodForm => ({ foodName: '', mealCategory, servingSize: '', servingUnit: 'grams', calories: '', protein: '', carbohydrates: '', fat: '' })
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(date)
 }
 
+function dateKey(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatNumber(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
 function FoodLog() {
   const [selectedDate, setSelectedDate] = useState(() => new Date())
-  const [activeMeal, setActiveMeal] = useState<string | null>(null)
+  const [entries, setEntries] = useState<FoodEntry[]>([])
+  const [activeMeal, setActiveMeal] = useState<MealCategory | null>(null)
   const [form, setForm] = useState<FoodForm>(() => emptyForm('Breakfast'))
   const [errors, setErrors] = useState<FoodErrors>({})
   const [validationMessage, setValidationMessage] = useState('')
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
+  const selectedDateKey = dateKey(selectedDate)
+  const selectedEntries = entries.filter((entry) => entry.date === selectedDateKey)
+  const dailyTotals = selectedEntries.reduce((totals, entry) => ({
+    calories: totals.calories + entry.calories,
+    protein: totals.protein + entry.protein,
+    carbohydrates: totals.carbohydrates + entry.carbohydrates,
+    fat: totals.fat + entry.fat,
+  }), { calories: 0, protein: 0, carbohydrates: 0, fat: 0 })
+  const caloriesRemaining = Math.max(caloriesGoal - dailyTotals.calories, 0)
+  const calorieProgress = Math.min((dailyTotals.calories / caloriesGoal) * 100, 100)
 
   useEffect(() => {
     if (!activeMeal) return
@@ -55,7 +74,7 @@ function FoodLog() {
     })
   }
 
-  function openAddFood(mealName: string) {
+  function openAddFood(mealName: MealCategory) {
     setForm(emptyForm(mealName))
     setErrors({})
     setValidationMessage('')
@@ -92,7 +111,20 @@ function FoodLog() {
       setValidationMessage('Please fix the highlighted fields before adding food.')
       return
     }
-    setValidationMessage('This form is valid. Food saving will be added in a future update.')
+    setEntries((current) => [...current, {
+      id: crypto.randomUUID(),
+      date: selectedDateKey,
+      foodName: form.foodName.trim(),
+      mealCategory: form.mealCategory,
+      servingSize: Number(form.servingSize),
+      servingUnit: form.servingUnit,
+      calories: Number(form.calories),
+      protein: Number(form.protein),
+      carbohydrates: Number(form.carbohydrates),
+      fat: Number(form.fat),
+    }])
+    setForm(emptyForm('Breakfast'))
+    closeModal()
   }
 
   return (
@@ -105,12 +137,12 @@ function FoodLog() {
         </header>
 
         <section className="food-summary-card" aria-label="Daily summary">
-          <div className="food-summary-heading"><div><p className="dashboard-kicker">Daily Summary</p><strong>1,842 <small>of 2,200 kcal</small></strong></div><span className="summary-remaining">358 kcal remaining</span></div>
-          <div className="food-summary-progress"><span /></div>
-          <div className="food-summary-macros"><div><span className="summary-dot protein" />Protein <strong>92g</strong></div><div><span className="summary-dot carbs" />Carbs <strong>211g</strong></div><div><span className="summary-dot fats" />Fats <strong>58g</strong></div></div>
+          <div className="food-summary-heading"><div><p className="dashboard-kicker">Daily Summary</p><strong>{formatNumber(dailyTotals.calories)} <small>of {caloriesGoal.toLocaleString()} kcal</small></strong></div><span className="summary-remaining">{formatNumber(caloriesRemaining)} kcal remaining</span></div>
+          <div className="food-summary-progress"><span style={{ width: `${calorieProgress}%` }} /></div>
+          <div className="food-summary-macros"><div><span className="summary-dot protein" />Protein <strong>{formatNumber(dailyTotals.protein)}g</strong></div><div><span className="summary-dot carbs" />Carbs <strong>{formatNumber(dailyTotals.carbohydrates)}g</strong></div><div><span className="summary-dot fats" />Fats <strong>{formatNumber(dailyTotals.fat)}g</strong></div></div>
         </section>
 
-        <section className="food-meals-section"><div className="food-meals-heading"><div><p className="dashboard-kicker">Your day</p><h2>Meals</h2></div></div><div className="food-meals-grid">{meals.map((meal) => <article className={`food-meal-card ${meal.className}`} key={meal.name}><header><div><h3>{meal.name}</h3><span>{meal.items.length} items</span></div><strong>{meal.total} kcal</strong></header><div className="food-table-heading"><span>Food name</span><span>Serving</span><span>Calories</span></div><div className="food-items">{meal.items.map((item) => <div className="food-item" key={item.name}><span>{item.name}</span><span>{item.serving}</span><strong>{item.calories} kcal</strong></div>)}</div><button className="food-add-button" type="button" onClick={() => openAddFood(meal.name)}>+ Add Food</button></article>)}</div></section>
+        <section className="food-meals-section"><div className="food-meals-heading"><div><p className="dashboard-kicker">Your day</p><h2>Meals</h2></div></div><div className="food-meals-grid">{mealCategories.map((mealName) => { const mealEntries = selectedEntries.filter((entry) => entry.mealCategory === mealName); const mealTotal = mealEntries.reduce((total, entry) => total + entry.calories, 0); return <article className={`food-meal-card ${mealClassNames[mealName]}`} key={mealName}><header><div><h3>{mealName}</h3><span>{mealEntries.length} {mealEntries.length === 1 ? 'item' : 'items'}</span></div><strong>{formatNumber(mealTotal)} kcal</strong></header><div className="food-table-heading"><span>Food name</span><span>Serving</span><span>Calories</span></div><div className="food-items">{mealEntries.length === 0 ? <p className="food-empty-state">No foods logged yet.</p> : mealEntries.map((entry) => <div className="food-item" key={entry.id}><span>{entry.foodName}</span><span>{formatNumber(entry.servingSize)} {entry.servingUnit}</span><strong>{formatNumber(entry.calories)} kcal</strong></div>)}</div><button className="food-add-button" type="button" onClick={() => openAddFood(mealName)}>+ Add Food</button></article> })}</div></section>
       </main>
 
       {activeMeal && <div className="food-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal() }}>
@@ -118,7 +150,7 @@ function FoodLog() {
           <div className="food-modal-header"><div><p className="dashboard-kicker">{activeMeal}</p><h2 id="add-food-title">Add Food</h2></div><button className="food-modal-close" ref={closeButtonRef} type="button" onClick={closeModal} aria-label="Close Add Food dialog">×</button></div>
           <form onSubmit={handleSubmit} noValidate>
             <div className="food-form-field food-form-wide"><label htmlFor="food-name">Food Name</label><input id="food-name" type="text" value={form.foodName} onChange={(event) => updateField('foodName', event.target.value)} aria-invalid={Boolean(errors.foodName)} aria-describedby={errors.foodName ? 'food-name-error' : undefined} placeholder="e.g. Grilled chicken" />{errors.foodName && <span className="food-field-error" id="food-name-error">{errors.foodName}</span>}</div>
-            <div className="food-form-field"><label htmlFor="meal-category">Meal Category</label><select id="meal-category" value={form.mealCategory} onChange={(event) => updateField('mealCategory', event.target.value)}><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snacks</option></select></div>
+            <div className="food-form-field"><label htmlFor="meal-category">Meal Category</label><select id="meal-category" value={form.mealCategory} onChange={(event) => updateField('mealCategory', event.target.value as MealCategory)}><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snacks</option></select></div>
             <div className="food-form-field"><label htmlFor="serving-size">Serving Size</label><input id="serving-size" type="number" min="0.01" step="any" value={form.servingSize} onChange={(event) => updateField('servingSize', event.target.value)} aria-invalid={Boolean(errors.servingSize)} aria-describedby={errors.servingSize ? 'serving-size-error' : undefined} placeholder="1" />{errors.servingSize && <span className="food-field-error" id="serving-size-error">{errors.servingSize}</span>}</div>
             <div className="food-form-field"><label htmlFor="serving-unit">Serving Unit</label><select id="serving-unit" value={form.servingUnit} onChange={(event) => updateField('servingUnit', event.target.value)}><option>grams</option><option>pieces</option><option>cups</option><option>servings</option></select></div>
             <div className="food-form-field"><label htmlFor="calories">Calories</label><input id="calories" type="number" min="0" step="any" value={form.calories} onChange={(event) => updateField('calories', event.target.value)} aria-invalid={Boolean(errors.calories)} placeholder="0" />{errors.calories && <span className="food-field-error">{errors.calories}</span>}</div>
