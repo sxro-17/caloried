@@ -5,8 +5,6 @@ export type FoodEntry = { id: string; date: string; foodName: string; mealCatego
 export type NutritionTotals = { calories: number; protein: number; carbohydrates: number; fat: number }
 
 export const mealCategories: MealCategory[] = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
-export const caloriesGoal = 2200
-export const macroGoals = { protein: 128, carbohydrates: 310, fat: 76 }
 export const foodEntriesStorageKey = 'caloried-food-entries-v1'
 const foodEntriesUpdatedEvent = 'caloried-food-entries-updated'
 

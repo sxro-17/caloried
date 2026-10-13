@@ -1,0 +1,22 @@
+.settings-main { max-width: 1080px; }
+.settings-header { margin-bottom: 28px; }
+.settings-header h1 { margin: 6px 0 8px; color: var(--dashboard-navy); font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.04em; }
+.settings-header p:not(.dashboard-kicker) { margin: 0; color: var(--dashboard-muted); line-height: 1.6; }
+.settings-card { max-width: 760px; padding: 32px; border: 1px solid #e3ebe7; border-radius: 22px; background: #fff; box-shadow: 0 14px 34px rgba(27, 62, 52, .06); }
+.settings-card-heading { padding-bottom: 24px; border-bottom: 1px solid #edf2ef; }
+.settings-card h2 { margin: 6px 0 8px; color: var(--dashboard-navy); font-size: 1.45rem; }
+.settings-card-heading p:not(.dashboard-kicker) { margin: 0; color: var(--dashboard-muted); font-size: .92rem; line-height: 1.55; }
+.settings-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 20px; padding-top: 26px; }
+.settings-field label { display: block; margin-bottom: 8px; color: var(--dashboard-navy); font-size: .86rem; font-weight: 700; }
+.settings-field label span { color: var(--dashboard-muted); font-weight: 500; }
+.settings-input-wrap { position: relative; }
+.settings-input-wrap input { width: 100%; box-sizing: border-box; padding: 13px 48px 13px 15px; border: 1px solid #dbe7e1; border-radius: 10px; color: var(--dashboard-navy); background: #fbfdfc; font: inherit; font-size: .95rem; outline: none; }
+.settings-input-wrap input:focus { border-color: var(--dashboard-mint); box-shadow: 0 0 0 3px rgba(154, 224, 194, .24); }
+.settings-input-wrap input[aria-invalid='true'] { border-color: #c56b70; }
+.settings-input-wrap span { position: absolute; top: 50%; right: 15px; color: var(--dashboard-muted); font-size: .82rem; transform: translateY(-50%); }
+.settings-error { margin: 6px 0 0; color: #a9484f; font-size: .78rem; }
+.settings-actions { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding-top: 6px; }
+.settings-save-button { border: 0; border-radius: 999px; padding: 12px 22px; color: var(--dashboard-navy); background: var(--dashboard-mint); font: inherit; font-size: .88rem; font-weight: 800; cursor: pointer; }
+.settings-save-button:hover { filter: brightness(.97); }
+.settings-success { margin: 0; color: #337458; font-size: .86rem; }
+@media (max-width: 640px) { .settings-card { padding: 23px 18px; border-radius: 17px; } .settings-form { grid-template-columns: 1fr; gap: 18px; } .settings-actions { grid-column: auto; align-items: flex-start; flex-direction: column; } }

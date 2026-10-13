@@ -5,6 +5,7 @@ import Dashboard from './Dashboard'
 import FoodLog from './FoodLog'
 import History from './History'
 import Profile from './Profile'
+import Settings from './Settings'
 
 const features = [
   { title: 'Track Calories', description: 'Keep track of your daily calorie intake and stay on top of your goals.' },
@@ -105,6 +106,7 @@ function App() {
   if (window.location.pathname === '/food-log') return <FoodLog />
   if (window.location.pathname === '/history') return <History />
   if (window.location.pathname === '/profile') return <Profile />
+  if (window.location.pathname === '/settings') return <Settings />
   return <LandingPage />
 }
 

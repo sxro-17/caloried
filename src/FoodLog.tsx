@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './FoodLog.css'
 import DashboardSidebar from './DashboardSidebar'
-import { calculateNutritionTotals, caloriesGoal, dateFromKey, dateKey, getEntriesForDate, isValidDateKey, mealCategories, saveFoodEntries, type FoodEntry, type MealCategory, useFoodEntries } from './foodData'
+import { calculateNutritionTotals, dateFromKey, dateKey, getEntriesForDate, isValidDateKey, mealCategories, saveFoodEntries, type FoodEntry, type MealCategory, useFoodEntries } from './foodData'
+import { useNutritionGoals } from './settingsData'
 
 type FoodForm = { foodName: string; mealCategory: MealCategory; servingSize: string; servingUnit: string; calories: string; protein: string; carbohydrates: string; fat: string }
 type FoodErrors = Partial<Record<keyof FoodForm, string>>
@@ -17,6 +18,7 @@ function FoodLog() {
     return isValidDateKey(requestedDate) ? dateFromKey(requestedDate) : new Date()
   })
   const [entries, setEntries] = useFoodEntries()
+  const [goals] = useNutritionGoals()
   const [highlightedMeal, setHighlightedMeal] = useState<MealCategory | null>(() => {
     const requestedMeal = new URLSearchParams(window.location.search).get('meal')
     return mealCategories.find((meal) => meal === requestedMeal) ?? null
@@ -34,8 +36,8 @@ function FoodLog() {
   const selectedDateKey = dateKey(selectedDate)
   const selectedEntries = getEntriesForDate(entries, selectedDateKey)
   const dailyTotals = calculateNutritionTotals(selectedEntries)
-  const caloriesRemaining = Math.max(caloriesGoal - dailyTotals.calories, 0)
-  const calorieProgress = Math.min((dailyTotals.calories / caloriesGoal) * 100, 100)
+  const caloriesRemaining = Math.max(goals.calories - dailyTotals.calories, 0)
+  const calorieProgress = Math.min((dailyTotals.calories / goals.calories) * 100, 100)
   const dialogIsOpen = Boolean(activeMeal || entryToDelete)
 
   useEffect(() => {
@@ -110,7 +112,7 @@ function FoodLog() {
       <DashboardSidebar active="food" />
       <main className="dashboard-main food-log-main">
         <header className="food-log-header"><div><p className="dashboard-kicker">Your meals, at a glance</p><h1>Food Log</h1><p className="food-log-description">Keep a simple record of what you eat throughout the day.</p></div><div className="food-log-date-controls"><button type="button" onClick={() => shiftDate(-1)}>← <span>Previous</span></button><strong>{formatDate(selectedDate)}</strong><button type="button" onClick={() => shiftDate(1)}><span>Next</span> →</button></div></header>
-        <section className="food-summary-card" aria-label="Daily summary"><div className="food-summary-heading"><div><p className="dashboard-kicker">Daily Summary</p><strong>{formatNumber(dailyTotals.calories)} <small>of {caloriesGoal.toLocaleString()} kcal</small></strong></div><span className="summary-remaining">{formatNumber(caloriesRemaining)} kcal remaining</span></div><div className="food-summary-progress"><span style={{ width: `${calorieProgress}%` }} /></div><div className="food-summary-macros"><div><span className="summary-dot protein" />Protein <strong>{formatNumber(dailyTotals.protein)}g</strong></div><div><span className="summary-dot carbs" />Carbs <strong>{formatNumber(dailyTotals.carbohydrates)}g</strong></div><div><span className="summary-dot fats" />Fats <strong>{formatNumber(dailyTotals.fat)}g</strong></div></div></section>
+        <section className="food-summary-card" aria-label="Daily summary"><div className="food-summary-heading"><div><p className="dashboard-kicker">Daily Summary</p><strong>{formatNumber(dailyTotals.calories)} <small>of {goals.calories.toLocaleString()} kcal</small></strong></div><span className="summary-remaining">{formatNumber(caloriesRemaining)} kcal remaining</span></div><div className="food-summary-progress"><span style={{ width: `${calorieProgress}%` }} /></div><div className="food-summary-macros"><div><span className="summary-dot protein" />Protein <strong>{formatNumber(dailyTotals.protein)}g</strong></div><div><span className="summary-dot carbs" />Carbs <strong>{formatNumber(dailyTotals.carbohydrates)}g</strong></div><div><span className="summary-dot fats" />Fats <strong>{formatNumber(dailyTotals.fat)}g</strong></div></div></section>
         <section className="food-meals-section"><div className="food-meals-heading"><div><p className="dashboard-kicker">Your day</p><h2>Meals</h2></div></div><div className="food-meals-grid">{mealCategories.map((mealName) => { const mealEntries = selectedEntries.filter((entry) => entry.mealCategory === mealName); const mealTotal = mealEntries.reduce((total, entry) => total + entry.calories, 0); return <article className={`food-meal-card ${mealClassNames[mealName]} ${highlightedMeal === mealName ? 'is-highlighted' : ''}`} id={`meal-${mealName.toLowerCase()}`} key={mealName}><header><div><h3>{mealName}</h3><span>{mealEntries.length} {mealEntries.length === 1 ? 'item' : 'items'}</span></div><strong>{formatNumber(mealTotal)} kcal</strong></header><div className="food-table-heading"><span>Food name</span><span>Serving</span><span>Calories</span><span aria-hidden="true" /></div><div className="food-items">{mealEntries.length === 0 ? <p className="food-empty-state">No foods logged yet.</p> : mealEntries.map((entry) => <div className="food-item" key={entry.id}><span>{entry.foodName}</span><span>{formatNumber(entry.servingSize)} {entry.servingUnit}</span><strong>{formatNumber(entry.calories)} kcal</strong><div className="food-entry-menu"><button className="food-entry-menu-button" type="button" aria-label={`Actions for ${entry.foodName}`} aria-expanded={openMenuId === entry.id} aria-haspopup="menu" onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}>⋮</button>{openMenuId === entry.id && <div className="food-entry-menu-list" role="menu"><button type="button" role="menuitem" onClick={() => openEditFood(entry)}>Edit</button><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setEntryToDelete(entry) }}>Delete</button></div>}</div></div>)}</div><button className="food-add-button" type="button" onClick={() => openAddFood(mealName)}>+ Add Food</button></article> })}</div></section>
       </main>
 

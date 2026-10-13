@@ -1,7 +1,8 @@
 import './Dashboard.css'
 import DashboardSidebar from './DashboardSidebar'
-import { calculateMealCalories, calculateNutritionTotals, caloriesGoal, dateKey, getEntriesForDate, macroGoals, mealCategories, useFoodEntries, type MealCategory } from './foodData'
+import { calculateMealCalories, calculateNutritionTotals, dateKey, getEntriesForDate, mealCategories, useFoodEntries, type MealCategory } from './foodData'
 import { getInitials, useProfile } from './profileData'
+import { useNutritionGoals } from './settingsData'
 
 function formatNumber(value: number) { return Number.isInteger(value) ? String(value) : value.toFixed(1) }
 const dashboardToday = new Date()
@@ -10,12 +11,13 @@ const dashboardCurrentDate = new Intl.DateTimeFormat('en-US', { weekday: 'long',
 function Dashboard() {
   const [entries] = useFoodEntries()
   const [profile] = useProfile()
+  const [goals] = useNutritionGoals()
   const displayName = profile.fullName.trim() || 'there'
   const todayEntries = getEntriesForDate(entries, dateKey(dashboardToday))
   const dailyTotals = calculateNutritionTotals(todayEntries)
-  const caloriesRemaining = Math.max(caloriesGoal - dailyTotals.calories, 0)
-  const calorieProgress = Math.min((dailyTotals.calories / caloriesGoal) * 100, 100)
-  const macroProgress = { protein: Math.min((dailyTotals.protein / macroGoals.protein) * 100, 100), carbohydrates: Math.min((dailyTotals.carbohydrates / macroGoals.carbohydrates) * 100, 100), fat: Math.min((dailyTotals.fat / macroGoals.fat) * 100, 100) }
+  const caloriesRemaining = Math.max(goals.calories - dailyTotals.calories, 0)
+  const calorieProgress = Math.min((dailyTotals.calories / goals.calories) * 100, 100)
+  const macroProgress = { protein: Math.min((dailyTotals.protein / goals.protein) * 100, 100), carbohydrates: Math.min((dailyTotals.carbohydrates / goals.carbohydrates) * 100, 100), fat: Math.min((dailyTotals.fat / goals.fat) * 100, 100) }
 
   function mealDetail(mealCategory: MealCategory) {
     const count = todayEntries.filter((entry) => entry.mealCategory === mealCategory).length
@@ -29,14 +31,14 @@ function Dashboard() {
         <header className="dashboard-header"><div><p className="dashboard-kicker">Your daily overview</p><h1>Good morning, {displayName}<span>!</span></h1><p className="dashboard-date">{dashboardCurrentDate}</p></div><div className="header-avatar">{getInitials(profile.fullName)}</div></header>
 
         <section className="summary-grid" aria-label="Daily nutrition summary">
-          <article className="summary-card calories-card"><div className="card-heading"><span>Daily Calories</span><span className="card-menu">•••</span></div><div className="calories-content"><div className="calorie-ring" style={{ background: `conic-gradient(var(--dashboard-deep) ${calorieProgress}%, #e9efeb 0)` }}><div className="calorie-ring-inner"><strong>{formatNumber(dailyTotals.calories)}</strong><span>of {caloriesGoal.toLocaleString()} kcal</span></div></div><div className="calories-copy"><strong>{formatNumber(caloriesRemaining)}</strong><span>calories remaining</span></div></div><div className="progress-track"><span style={{ width: `${calorieProgress}%` }} /></div></article>
+          <article className="summary-card calories-card"><div className="card-heading"><span>Daily Calories</span><span className="card-menu">•••</span></div><div className="calories-content"><div className="calorie-ring" style={{ background: `conic-gradient(var(--dashboard-deep) ${calorieProgress}%, #e9efeb 0)` }}><div className="calorie-ring-inner"><strong>{formatNumber(dailyTotals.calories)}</strong><span>of {goals.calories.toLocaleString()} kcal</span></div></div><div className="calories-copy"><strong>{formatNumber(caloriesRemaining)}</strong><span>calories remaining</span></div></div><div className="progress-track"><span style={{ width: `${calorieProgress}%` }} /></div></article>
           <article className="summary-card goal-card"><div className="card-heading"><span>Daily Goal</span><span className="goal-check">✓</span></div><strong className="goal-number">{formatNumber(caloriesRemaining)}</strong><span className="goal-label">calories remaining</span><p>{todayEntries.length === 0 ? 'No foods logged today.' : 'You’re doing great today.'}<br />{todayEntries.length === 0 ? 'Add a meal to get started.' : 'Keep it up!'}</p></article>
         </section>
 
         <section className="macros-section"><div className="section-title-row"><div><p className="dashboard-kicker">Your nutrition breakdown</p><h2>Macros</h2></div><span className="date-button">Today</span></div><div className="macro-grid">
-          <article className="macro-card"><div className="macro-top"><span className="macro-dot protein" /><span>Protein</span><strong>{formatNumber(dailyTotals.protein)}g</strong></div><div className="progress-track"><span className="protein-fill" style={{ width: `${macroProgress.protein}%` }} /></div><small>of {macroGoals.protein}g goal</small></article>
-          <article className="macro-card"><div className="macro-top"><span className="macro-dot carbs" /><span>Carbs</span><strong>{formatNumber(dailyTotals.carbohydrates)}g</strong></div><div className="progress-track"><span className="carbs-fill" style={{ width: `${macroProgress.carbohydrates}%` }} /></div><small>of {macroGoals.carbohydrates}g goal</small></article>
-          <article className="macro-card"><div className="macro-top"><span className="macro-dot fats" /><span>Fats</span><strong>{formatNumber(dailyTotals.fat)}g</strong></div><div className="progress-track"><span className="fats-fill" style={{ width: `${macroProgress.fat}%` }} /></div><small>of {macroGoals.fat}g goal</small></article>
+          <article className="macro-card"><div className="macro-top"><span className="macro-dot protein" /><span>Protein</span><strong>{formatNumber(dailyTotals.protein)}g</strong></div><div className="progress-track"><span className="protein-fill" style={{ width: `${macroProgress.protein}%` }} /></div><small>of {goals.protein}g goal</small></article>
+          <article className="macro-card"><div className="macro-top"><span className="macro-dot carbs" /><span>Carbs</span><strong>{formatNumber(dailyTotals.carbohydrates)}g</strong></div><div className="progress-track"><span className="carbs-fill" style={{ width: `${macroProgress.carbohydrates}%` }} /></div><small>of {goals.carbohydrates}g goal</small></article>
+          <article className="macro-card"><div className="macro-top"><span className="macro-dot fats" /><span>Fats</span><strong>{formatNumber(dailyTotals.fat)}g</strong></div><div className="progress-track"><span className="fats-fill" style={{ width: `${macroProgress.fat}%` }} /></div><small>of {goals.fat}g goal</small></article>
         </div></section>
 
         <section className="meals-section"><div className="section-title-row"><div><p className="dashboard-kicker">Keep track of your day</p><h2>Today’s Meals</h2></div><a className="add-food-button" href="/food-log">+ Add Food</a></div><div className="meal-list">{mealCategories.map((mealCategory) => <a className={`meal-row ${mealCategory.toLowerCase()}`} href={`/food-log?meal=${encodeURIComponent(mealCategory)}`} key={mealCategory}><div className="meal-icon" /><div className="meal-copy"><strong>{mealCategory}</strong><span>{mealDetail(mealCategory)}</span></div><span className="meal-calories">{formatNumber(calculateMealCalories(todayEntries, mealCategory))} kcal</span><span className="meal-arrow" aria-hidden="true">→</span></a>)}</div></section>
