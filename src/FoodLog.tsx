@@ -10,8 +10,47 @@ type FoodErrors = Partial<Record<keyof FoodForm, string>>
 const mealCategories: MealCategory[] = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
 const mealClassNames: Record<MealCategory, string> = { Breakfast: 'breakfast', Lunch: 'lunch', Dinner: 'dinner', Snacks: 'snacks' }
 const caloriesGoal = 2200
+const foodEntriesStorageKey = 'caloried-food-entries-v1'
 
 const emptyForm = (mealCategory: MealCategory): FoodForm => ({ foodName: '', mealCategory, servingSize: '', servingUnit: 'grams', calories: '', protein: '', carbohydrates: '', fat: '' })
+
+function isMealCategory(value: unknown): value is MealCategory {
+  return typeof value === 'string' && mealCategories.includes(value as MealCategory)
+}
+
+function isValidFoodEntry(value: unknown): value is FoodEntry {
+  if (!value || typeof value !== 'object') return false
+  const entry = value as Partial<FoodEntry>
+  return typeof entry.id === 'string'
+    && typeof entry.date === 'string'
+    && typeof entry.foodName === 'string'
+    && isMealCategory(entry.mealCategory)
+    && typeof entry.servingUnit === 'string'
+    && typeof entry.servingSize === 'number' && Number.isFinite(entry.servingSize) && entry.servingSize > 0
+    && typeof entry.calories === 'number' && Number.isFinite(entry.calories) && entry.calories >= 0
+    && typeof entry.protein === 'number' && Number.isFinite(entry.protein) && entry.protein >= 0
+    && typeof entry.carbohydrates === 'number' && Number.isFinite(entry.carbohydrates) && entry.carbohydrates >= 0
+    && typeof entry.fat === 'number' && Number.isFinite(entry.fat) && entry.fat >= 0
+}
+
+function loadFoodEntries(): FoodEntry[] {
+  try {
+    const storedEntries = localStorage.getItem(foodEntriesStorageKey)
+    if (!storedEntries) return []
+    const parsedEntries: unknown = JSON.parse(storedEntries)
+    return Array.isArray(parsedEntries) ? parsedEntries.filter(isValidFoodEntry) : []
+  } catch {
+    return []
+  }
+}
+
+function saveFoodEntries(entries: FoodEntry[]) {
+  try {
+    localStorage.setItem(foodEntriesStorageKey, JSON.stringify(entries))
+  } catch {
+    // Storage may be unavailable or full; the in-memory list still works.
+  }
+}
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(date)
@@ -30,7 +69,7 @@ function formatNumber(value: number) {
 
 function FoodLog() {
   const [selectedDate, setSelectedDate] = useState(() => new Date())
-  const [entries, setEntries] = useState<FoodEntry[]>([])
+  const [entries, setEntries] = useState<FoodEntry[]>(loadFoodEntries)
   const [activeMeal, setActiveMeal] = useState<MealCategory | null>(null)
   const [form, setForm] = useState<FoodForm>(() => emptyForm('Breakfast'))
   const [errors, setErrors] = useState<FoodErrors>({})
@@ -111,7 +150,7 @@ function FoodLog() {
       setValidationMessage('Please fix the highlighted fields before adding food.')
       return
     }
-    setEntries((current) => [...current, {
+    const newEntry: FoodEntry = {
       id: crypto.randomUUID(),
       date: selectedDateKey,
       foodName: form.foodName.trim(),
@@ -122,7 +161,10 @@ function FoodLog() {
       protein: Number(form.protein),
       carbohydrates: Number(form.carbohydrates),
       fat: Number(form.fat),
-    }])
+    }
+    const nextEntries = [...entries, newEntry]
+    setEntries(nextEntries)
+    saveFoodEntries(nextEntries)
     setForm(emptyForm('Breakfast'))
     closeModal()
   }
