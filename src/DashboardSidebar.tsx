@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import './Dashboard.css'
 import logoSrc from './assets/caloried-logo.svg'
 import { getInitials, useProfile } from './profileData'
+import { useAuth } from './auth/useAuth'
 
 type IconName = 'dashboard' | 'food' | 'history' | 'settings' | 'help'
 
@@ -19,6 +20,7 @@ function Icon({ name }: { name: IconName }) {
 
 function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' | 'settings' | 'help' | 'profile' }) {
   const [profile] = useProfile()
+  const { user, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const profileName = profile.fullName.trim() || 'User'
   useEffect(() => {
@@ -27,6 +29,10 @@ function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history'
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [menuOpen])
+  async function handleLogout() {
+    const result = await signOut()
+    if (!result.error) window.location.assign('/')
+  }
   return (
     <aside className={`dashboard-sidebar ${menuOpen ? 'menu-open' : ''}`}>
       <a className="dashboard-logo" href="/" aria-label="Back to Calorie’d home"><img src={logoSrc} alt="Calorie’d" /></a>
@@ -43,6 +49,7 @@ function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history'
         <div><strong>{profileName}</strong><span>Personal account</span></div>
         <span className="profile-more" aria-hidden="true">•••</span>
       </a>
+      {user && <button className="sidebar-logout" type="button" onClick={handleLogout}>Log out</button>}
     </aside>
   )
 }

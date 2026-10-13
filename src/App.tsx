@@ -8,6 +8,11 @@ import History from './History'
 import Profile from './Profile'
 import Settings from './Settings'
 import Help from './Help'
+import Login from './Login'
+import Signup from './Signup'
+import ForgotPassword from './ForgotPassword'
+import UpdatePassword from './UpdatePassword'
+import { AuthProvider } from './auth/AuthProvider'
 
 const features = [
   { title: 'Track Calories', description: 'Keep track of your daily calorie intake and stay on top of your goals.' },
@@ -36,6 +41,8 @@ function LandingPage() {
           <a onClick={closeMobileMenu} className="active" href="#home">Home</a>
           <a onClick={closeMobileMenu} href="#features">Features</a>
           <a onClick={closeMobileMenu} href="#about">About</a>
+          <a onClick={closeMobileMenu} className="auth-nav-link" href="/login">Log in</a>
+          <a onClick={closeMobileMenu} className="auth-nav-link" href="/signup">Sign up</a>
           <a onClick={closeMobileMenu} className="nav-cta" href="/dashboard">Get Started</a>
           </div>
         </nav>
@@ -115,7 +122,11 @@ function LandingPage() {
   )
 }
 
-function App() {
+function AppRoutes() {
+  if (window.location.pathname === '/login') return <Login />
+  if (window.location.pathname === '/signup') return <Signup />
+  if (window.location.pathname === '/forgot-password') return <ForgotPassword />
+  if (window.location.pathname === '/update-password') return <UpdatePassword />
   if (window.location.pathname === '/dashboard') return <Dashboard />
   if (window.location.pathname === '/food-log') return <FoodLog />
   if (window.location.pathname === '/history') return <History />
@@ -123,6 +134,10 @@ function App() {
   if (window.location.pathname === '/settings') return <Settings />
   if (window.location.pathname === '/help') return <Help />
   return <LandingPage />
+}
+
+function App() {
+  return <AuthProvider><AppRoutes /></AuthProvider>
 }
 
 export default App
