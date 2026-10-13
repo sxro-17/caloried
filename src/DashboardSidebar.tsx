@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import './Dashboard.css'
 import logoSrc from './assets/caloried-logo.svg'
 import { getInitials, useProfile } from './profileData'
@@ -19,12 +19,19 @@ function Icon({ name }: { name: IconName }) {
 
 function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' | 'settings' | 'help' | 'profile' }) {
   const [profile] = useProfile()
+  const [menuOpen, setMenuOpen] = useState(false)
   const profileName = profile.fullName.trim() || 'Your Name'
-
+  useEffect(() => {
+    if (!menuOpen) return
+    function closeOnEscape(event: KeyboardEvent) { if (event.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [menuOpen])
   return (
-    <aside className="dashboard-sidebar">
+    <aside className={`dashboard-sidebar ${menuOpen ? 'menu-open' : ''}`}>
       <a className="dashboard-logo" href="/" aria-label="Back to Calorie’d home"><img src={logoSrc} alt="Calorie’d" /></a>
-      <nav className="dashboard-nav" aria-label="Dashboard navigation">
+      <button className="dashboard-mobile-menu-button" type="button" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="dashboard-navigation" onClick={() => setMenuOpen((open) => !open)}><span /><span /><span /></button>
+      <nav className="dashboard-nav" id="dashboard-navigation" aria-label="Dashboard navigation">
         <a className={`dashboard-nav-item ${active === 'dashboard' ? 'active' : ''}`} href="/dashboard"><Icon name="dashboard" />Dashboard</a>
         <a className={`dashboard-nav-item ${active === 'food' ? 'active' : ''}`} href="/food-log"><Icon name="food" />Food Log</a>
         <a className={`dashboard-nav-item ${active === 'history' ? 'active' : ''}`} href="/history"><Icon name="history" />History</a>

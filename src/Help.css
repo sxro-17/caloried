@@ -19,3 +19,4 @@
 .good-to-know h2 { font-size: 1.15rem; margin: 0 0 7px; }
 .good-to-know p:last-child { color: #50675b; font-size: .87rem; line-height: 1.6; margin: 0; }
 @media (max-width: 650px) { .help-header { margin-bottom: 26px; }.help-card { border-radius: 17px; padding: 23px 18px; }.faq-question { font-size: .88rem; padding: 17px 1px; }.faq-answer { padding: 0 35px 18px 1px; }.faq-answer p { font-size: .84rem; }.good-to-know { gap: 12px; padding: 20px 18px; } }
+@media (min-width: 651px) and (max-width: 900px) { .help-card { padding-left: 26px; padding-right: 26px; } }

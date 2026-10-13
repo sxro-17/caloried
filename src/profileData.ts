@@ -25,7 +25,8 @@ export function saveProfile(profile: ProfileData) {
   try {
     localStorage.setItem(profileStorageKey, JSON.stringify(profile))
     window.dispatchEvent(new Event(profileUpdatedEvent))
-  } catch { /* In-memory state still works if storage is unavailable. */ }
+    return true
+  } catch { return false }
 }
 
 export function useProfile() {

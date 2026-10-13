@@ -4,15 +4,22 @@ export type NutritionGoals = { calories: number; protein: number; carbohydrates:
 
 export const settingsStorageKey = 'caloried-settings-v1'
 export const defaultNutritionGoals: NutritionGoals = { calories: 2200, protein: 128, carbohydrates: 310, fat: 76 }
+export const nutritionGoalLimits: Record<keyof NutritionGoals, { min: number; max: number }> = {
+  calories: { min: 0.01, max: 10000 },
+  protein: { min: 0.01, max: 1000 },
+  carbohydrates: { min: 0.01, max: 1000 },
+  fat: { min: 0.01, max: 1000 },
+}
 const settingsUpdatedEvent = 'caloried-settings-updated'
 
-function isNutritionGoals(value: unknown): value is NutritionGoals {
+export function isNutritionGoals(value: unknown): value is NutritionGoals {
   if (!value || typeof value !== 'object') return false
   const goals = value as Partial<NutritionGoals>
-  return typeof goals.calories === 'number' && Number.isFinite(goals.calories) && goals.calories > 0
-    && typeof goals.protein === 'number' && Number.isFinite(goals.protein) && goals.protein > 0
-    && typeof goals.carbohydrates === 'number' && Number.isFinite(goals.carbohydrates) && goals.carbohydrates > 0
-    && typeof goals.fat === 'number' && Number.isFinite(goals.fat) && goals.fat > 0
+  return (Object.keys(nutritionGoalLimits) as (keyof NutritionGoals)[]).every((field) => {
+    const value = goals[field]
+    const limits = nutritionGoalLimits[field]
+    return typeof value === 'number' && Number.isFinite(value) && value >= limits.min && value <= limits.max
+  })
 }
 
 export function loadNutritionGoals(): NutritionGoals {
@@ -28,7 +35,8 @@ export function saveNutritionGoals(goals: NutritionGoals) {
   try {
     localStorage.setItem(settingsStorageKey, JSON.stringify(goals))
     window.dispatchEvent(new Event(settingsUpdatedEvent))
-  } catch { /* In-memory state still works if storage is unavailable. */ }
+    return true
+  } catch { return false }
 }
 
 export function useNutritionGoals() {

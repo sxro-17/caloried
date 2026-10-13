@@ -29,7 +29,8 @@ export function saveFoodEntries(entries: FoodEntry[]) {
   try {
     localStorage.setItem(foodEntriesStorageKey, JSON.stringify(entries))
     window.dispatchEvent(new Event(foodEntriesUpdatedEvent))
-  } catch { /* In-memory state still works if storage is unavailable. */ }
+    return true
+  } catch { return false }
 }
 
 export function useFoodEntries() {

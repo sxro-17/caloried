@@ -30,6 +30,7 @@ function FoodLog() {
   const [form, setForm] = useState<FoodForm>(() => emptyForm('Breakfast'))
   const [errors, setErrors] = useState<FoodErrors>({})
   const [validationMessage, setValidationMessage] = useState('')
+  const [storageWarning, setStorageWarning] = useState('')
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const confirmDeleteRef = useRef<HTMLButtonElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
@@ -50,7 +51,16 @@ function FoodLog() {
       if (event.key === 'Escape') {
         if (entryToDelete) setEntryToDelete(null)
         else setActiveMeal(null)
+        return
       }
+      const dialogElement = document.querySelector<HTMLElement>('.food-modal, .food-confirm-dialog')
+      if (event.key !== 'Tab' || !dialogElement) return
+      const focusable = Array.from(dialogElement.querySelectorAll<HTMLElement>('button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])')).filter((element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true')
+      if (focusable.length === 0) { event.preventDefault(); return }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => {
@@ -83,8 +93,8 @@ function FoodLog() {
   function validateForm() {
     const nextErrors: FoodErrors = {}
     if (!form.foodName.trim()) nextErrors.foodName = 'Enter a food name.'
-    if (!form.servingSize || Number.isNaN(Number(form.servingSize)) || Number(form.servingSize) <= 0) nextErrors.servingSize = 'Enter a serving size greater than 0.'
-    for (const field of ['calories', 'protein', 'carbohydrates', 'fat'] as const) if (!form[field] || Number.isNaN(Number(form[field])) || Number(form[field]) < 0) nextErrors[field] = 'Enter a value of 0 or more.'
+    if (!form.servingSize || !Number.isFinite(Number(form.servingSize)) || Number(form.servingSize) <= 0) nextErrors.servingSize = 'Enter a serving size greater than 0.'
+    for (const field of ['calories', 'protein', 'carbohydrates', 'fat'] as const) if (!form[field] || !Number.isFinite(Number(form[field])) || Number(form[field]) < 0) nextErrors[field] = 'Enter a value of 0 or more.'
     return nextErrors
   }
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -95,7 +105,7 @@ function FoodLog() {
     const values = { foodName: form.foodName.trim(), mealCategory: form.mealCategory, servingSize: Number(form.servingSize), servingUnit: form.servingUnit, calories: Number(form.calories), protein: Number(form.protein), carbohydrates: Number(form.carbohydrates), fat: Number(form.fat) }
     const nextEntries = editingEntryId ? entries.map((entry) => entry.id === editingEntryId ? { ...entry, ...values } : entry) : [...entries, { id: crypto.randomUUID(), date: selectedDateKey, ...values }]
     setEntries(nextEntries)
-    saveFoodEntries(nextEntries)
+    setStorageWarning(saveFoodEntries(nextEntries) ? '' : 'Your food was updated for this session, but may not persist after refreshing.')
     setForm(emptyForm('Breakfast'))
     closeModal()
   }
@@ -103,7 +113,7 @@ function FoodLog() {
     if (!entryToDelete) return
     const nextEntries = entries.filter((entry) => entry.id !== entryToDelete.id)
     setEntries(nextEntries)
-    saveFoodEntries(nextEntries)
+    setStorageWarning(saveFoodEntries(nextEntries) ? '' : 'Your food was deleted for this session, but the change may not persist after refreshing.')
     setEntryToDelete(null)
   }
 
@@ -112,6 +122,7 @@ function FoodLog() {
       <DashboardSidebar active="food" />
       <main className="dashboard-main food-log-main">
         <header className="food-log-header"><div><p className="dashboard-kicker">Your meals, at a glance</p><h1>Food Log</h1><p className="food-log-description">Keep a simple record of what you eat throughout the day.</p></div><div className="food-log-date-controls"><button type="button" onClick={() => shiftDate(-1)}>← <span>Previous</span></button><strong>{formatDate(selectedDate)}</strong><button type="button" onClick={() => shiftDate(1)}><span>Next</span> →</button></div></header>
+        {storageWarning && <p className="storage-warning" role="alert">{storageWarning}</p>}
         <section className="food-summary-card" aria-label="Daily summary"><div className="food-summary-heading"><div><p className="dashboard-kicker">Daily Summary</p><strong>{formatNumber(dailyTotals.calories)} <small>of {goals.calories.toLocaleString()} kcal</small></strong></div><span className="summary-remaining">{formatNumber(caloriesRemaining)} kcal remaining</span></div><div className="food-summary-progress"><span style={{ width: `${calorieProgress}%` }} /></div><div className="food-summary-macros"><div><span className="summary-dot protein" />Protein <strong>{formatNumber(dailyTotals.protein)}g</strong></div><div><span className="summary-dot carbs" />Carbs <strong>{formatNumber(dailyTotals.carbohydrates)}g</strong></div><div><span className="summary-dot fats" />Fats <strong>{formatNumber(dailyTotals.fat)}g</strong></div></div></section>
         <section className="food-meals-section"><div className="food-meals-heading"><div><p className="dashboard-kicker">Your day</p><h2>Meals</h2></div></div><div className="food-meals-grid">{mealCategories.map((mealName) => { const mealEntries = selectedEntries.filter((entry) => entry.mealCategory === mealName); const mealTotal = mealEntries.reduce((total, entry) => total + entry.calories, 0); return <article className={`food-meal-card ${mealClassNames[mealName]} ${highlightedMeal === mealName ? 'is-highlighted' : ''}`} id={`meal-${mealName.toLowerCase()}`} key={mealName}><header><div><h3>{mealName}</h3><span>{mealEntries.length} {mealEntries.length === 1 ? 'item' : 'items'}</span></div><strong>{formatNumber(mealTotal)} kcal</strong></header><div className="food-table-heading"><span>Food name</span><span>Serving</span><span>Calories</span><span aria-hidden="true" /></div><div className="food-items">{mealEntries.length === 0 ? <p className="food-empty-state">No foods logged yet.</p> : mealEntries.map((entry) => <div className="food-item" key={entry.id}><span>{entry.foodName}</span><span>{formatNumber(entry.servingSize)} {entry.servingUnit}</span><strong>{formatNumber(entry.calories)} kcal</strong><div className="food-entry-menu"><button className="food-entry-menu-button" type="button" aria-label={`Actions for ${entry.foodName}`} aria-expanded={openMenuId === entry.id} aria-haspopup="menu" onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}>⋮</button>{openMenuId === entry.id && <div className="food-entry-menu-list" role="menu"><button type="button" role="menuitem" onClick={() => openEditFood(entry)}>Edit</button><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setEntryToDelete(entry) }}>Delete</button></div>}</div></div>)}</div><button className="food-add-button" type="button" onClick={() => openAddFood(mealName)}>+ Add Food</button></article> })}</div></section>
       </main>

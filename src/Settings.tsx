@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import DashboardSidebar from './DashboardSidebar'
-import { defaultNutritionGoals, saveNutritionGoals, useNutritionGoals, type NutritionGoals } from './settingsData'
+import { defaultNutritionGoals, nutritionGoalLimits, saveNutritionGoals, useNutritionGoals, type NutritionGoals } from './settingsData'
 import './Settings.css'
 
 type GoalField = keyof NutritionGoals
@@ -26,6 +26,7 @@ function Settings() {
   const [form, setForm] = useState<GoalForm>(() => goalsToForm(goals || defaultNutritionGoals))
   const [errors, setErrors] = useState<GoalErrors>({})
   const [saved, setSaved] = useState(false)
+  const [storageWarning, setStorageWarning] = useState('')
 
   const updateField = (field: GoalField, value: string) => {
     setSaved(false)
@@ -36,11 +37,11 @@ function Settings() {
   const validate = (): NutritionGoals | null => {
     const nextErrors: GoalErrors = {}
     const values = {} as NutritionGoals
-    const limits: Record<GoalField, number> = { calories: 10000, protein: 1000, carbohydrates: 1000, fat: 1000 }
     ;(Object.keys(labels) as GoalField[]).forEach((field) => {
       const value = Number(form[field])
+      const limits = nutritionGoalLimits[field]
       if (!form[field].trim() || !Number.isFinite(value) || value <= 0) nextErrors[field] = 'Enter a positive number.'
-      else if (value > limits[field]) nextErrors[field] = `Use a value of ${limits[field].toLocaleString()} or less.`
+      else if (value < limits.min || value > limits.max) nextErrors[field] = `Use a value between ${limits.min} and ${limits.max.toLocaleString()}.`
       else values[field] = value
     })
     setErrors(nextErrors)
@@ -51,15 +52,17 @@ function Settings() {
     event.preventDefault()
     const nextGoals = validate()
     if (!nextGoals) return
-    saveNutritionGoals(nextGoals)
+    const didSave = saveNutritionGoals(nextGoals)
     setForm(goalsToForm(nextGoals))
-    setSaved(true)
+    setSaved(didSave)
+    setStorageWarning(didSave ? '' : 'Your goals were updated for this session, but may not persist after refreshing.')
   }
 
   return (
     <div className="dashboard-shell">
       <DashboardSidebar active="settings" />
       <main className="dashboard-main settings-main">
+        {storageWarning && <p className="storage-warning" role="alert">{storageWarning}</p>}
         <header className="settings-header">
           <div><p className="dashboard-kicker">Personalize your plan</p><h1>Settings</h1><p>Set the daily nutrition goals you want to work toward.</p></div>
         </header>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import './App.css'
 import logoSrc from './assets/caloried-logo.svg'
 import cookieSrc from './assets/cookie-bite.svg'
@@ -16,15 +17,27 @@ const features = [
 ]
 
 function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    function closeOnEscape(event: KeyboardEvent) { if (event.key === 'Escape') setMobileMenuOpen(false) }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [mobileMenuOpen])
+  function closeMobileMenu() { setMobileMenuOpen(false) }
+
   return (
     <div className="site-shell">
       <header className="site-header">
         <a className="header-logo" href="#home" aria-label="Calorie’d home"><img src={logoSrc} alt="Calorie’d" /></a>
-        <nav className="main-nav" aria-label="Main navigation">
-          <a className="active" href="#home">Home</a>
-          <a href="#features">Features</a>
-          <a href="#about">About</a>
-          <a className="nav-cta" href="/dashboard">Get Started</a>
+        <nav className={`main-nav ${mobileMenuOpen ? 'is-open' : ''}`} aria-label="Main navigation">
+          <button className="mobile-menu-toggle" type="button" aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileMenuOpen} aria-controls="landing-navigation" onClick={() => setMobileMenuOpen((open) => !open)}><span /><span /><span /></button>
+          <div className="landing-navigation-links" id="landing-navigation">
+          <a onClick={closeMobileMenu} className="active" href="#home">Home</a>
+          <a onClick={closeMobileMenu} href="#features">Features</a>
+          <a onClick={closeMobileMenu} href="#about">About</a>
+          <a onClick={closeMobileMenu} className="nav-cta" href="/dashboard">Get Started</a>
+          </div>
         </nav>
       </header>
 
