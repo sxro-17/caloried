@@ -24,6 +24,7 @@ type FoodEntriesContextValue = {
   addEntry: (entry: FoodEntry) => Promise<string | null>
   updateEntry: (entry: FoodEntry) => Promise<string | null>
   deleteEntry: (id: string) => Promise<string | null>
+  refreshEntries: () => void
 }
 
 const FoodEntriesContext = createContext<FoodEntriesContextValue | undefined>(undefined)
@@ -41,6 +42,7 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [refreshToken, setRefreshToken] = useState(0)
   const generationRef = useRef(0)
   const operationRef = useRef(0)
   const savingRef = useRef(false)
@@ -88,7 +90,7 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
     })()
 
     return () => { active = false }
-  }, [authLoading, user])
+  }, [authLoading, refreshToken, user])
 
   async function addEntry(entry: FoodEntry) {
     if (savingRef.current) return 'Another food update is still being saved.'
@@ -162,7 +164,7 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
     finally { if (operation === operationRef.current) { savingRef.current = false; setSaving(false) } }
   }
 
-  const value = { entries, loading, saving, error, addEntry, updateEntry, deleteEntry }
+  const value = { entries, loading, saving, error, addEntry, updateEntry, deleteEntry, refreshEntries: () => setRefreshToken((current) => current + 1) }
   return <FoodEntriesContext.Provider value={value}>{children}</FoodEntriesContext.Provider>
 }
 

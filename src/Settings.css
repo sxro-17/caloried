@@ -19,5 +19,10 @@
 .settings-save-button { border: 0; border-radius: 999px; padding: 12px 22px; color: var(--dashboard-navy); background: var(--dashboard-mint); font: inherit; font-size: .88rem; font-weight: 800; cursor: pointer; }
 .settings-save-button:hover { filter: brightness(.97); }
 .settings-success { margin: 0; color: #337458; font-size: .86rem; }
+.settings-import-card { margin-top: 22px; }
+.settings-import-actions { display: flex; align-items: center; gap: 16px; padding-top: 22px; }
+.settings-import-button { border: 1px solid #315f3d; border-radius: 999px; padding: 11px 20px; color: #315f3d; background: #fff; font: inherit; font-size: .88rem; font-weight: 800; cursor: pointer; }
+.settings-import-button:hover { background: #f0f7f1; }
+.settings-import-message { margin: 0; color: var(--dashboard-muted); font-size: .86rem; }
 @media (max-width: 640px) { .settings-card { padding: 23px 18px; border-radius: 17px; } .settings-form { grid-template-columns: 1fr; gap: 18px; } .settings-actions { grid-column: auto; align-items: flex-start; flex-direction: column; } }
 @media (min-width: 641px) and (max-width: 900px) { .settings-main { padding-left: 30px; padding-right: 30px; }.settings-card { max-width: none; } }

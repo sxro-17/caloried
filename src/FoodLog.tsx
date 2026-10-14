@@ -41,8 +41,6 @@ function FoodLog() {
   const selectedDateKey = dateKey(selectedDate)
   const selectedEntries = getEntriesForDate(entries, selectedDateKey)
   const dailyTotals = calculateNutritionTotals(selectedEntries)
-  const caloriesRemaining = Math.max(goals!.calories - dailyTotals.calories, 0)
-  const calorieProgress = Math.min((dailyTotals.calories / goals!.calories) * 100, 100)
   const dialogIsOpen = Boolean(activeMeal || entryToDelete)
 
   useEffect(() => {
@@ -89,7 +87,10 @@ function FoodLog() {
     return () => { cancelAnimationFrame(frame); window.clearTimeout(timeout) }
   }, [highlightedMeal])
 
-  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="food" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}</main></div>
+  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="food" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}{!userDataLoading && !userDataError && !goals && <p className="storage-warning" role="alert">Your nutrition goals are unavailable. Please refresh and try again.</p>}</main></div>
+
+  const caloriesRemaining = Math.max(goals.calories - dailyTotals.calories, 0)
+  const calorieProgress = Math.min((dailyTotals.calories / goals.calories) * 100, 100)
 
   function shiftDate(days: number) { setSelectedDate((date) => { const nextDate = new Date(date); nextDate.setDate(nextDate.getDate() + days); return nextDate }) }
   function openAddFood(mealName: MealCategory) { setForm(emptyForm(mealName)); setEditingEntryId(null); setErrors({}); setValidationMessage(''); setOpenMenuId(null); setActiveMeal(mealName) }

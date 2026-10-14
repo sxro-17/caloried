@@ -3,6 +3,8 @@ import type { FormEvent } from 'react'
 import DashboardSidebar from './DashboardSidebar'
 import { nutritionGoalLimits, type NutritionGoals } from './settingsData'
 import { useUserData } from './UserDataProvider'
+import { useAuth } from './auth/useAuth'
+import { useGuestDataImport } from './GuestDataImportProvider'
 import './Settings.css'
 
 type GoalField = keyof NutritionGoals
@@ -23,11 +25,14 @@ function goalsToForm(goals: NutritionGoals): GoalForm {
 }
 
 function Settings() {
+  const { user } = useAuth()
+  const { openImport } = useGuestDataImport()
   const { nutritionGoals: goals, loading, error, goalsSaving: _goalsSaving, saveNutritionGoals } = useUserData()
   const [form, setForm] = useState<GoalForm>(() => goalsToForm(goals || { calories: 2200, protein: 128, carbohydrates: 310, fat: 76 }))
   const [errors, setErrors] = useState<GoalErrors>({})
   const [saved, setSaved] = useState(false)
   const [storageWarning, setStorageWarning] = useState('')
+  const [importMessage, setImportMessage] = useState('')
 
   useEffect(() => { if (goals && !saved) setForm(goalsToForm(goals)) }, [goals, saved])
 
@@ -60,7 +65,7 @@ function Settings() {
     else { setSaved(false); setStorageWarning('Your goals could not be saved. Your changes are still in the form; please try again.') }
   }
 
-  if (loading || !goals || error) return <div className="dashboard-shell"><DashboardSidebar active="settings" /><main className="dashboard-main settings-main">{loading && <p role="status">Loading your profile and nutrition goals…</p>}{error && <p className="storage-warning" role="alert">{error}</p>}</main></div>
+  if (loading || !goals || error) return <div className="dashboard-shell"><DashboardSidebar active="settings" /><main className="dashboard-main settings-main">{loading && <p role="status">Loading your profile and nutrition goals…</p>}{error && <p className="storage-warning" role="alert">{error}</p>}{!loading && !error && !goals && <p className="storage-warning" role="alert">Your nutrition goals are unavailable. Please refresh and try again.</p>}</main></div>
 
   return (
     <div className="dashboard-shell">
@@ -83,6 +88,7 @@ function Settings() {
             <div className="settings-actions"><button className="settings-save-button" type="submit">Save Goals</button>{saved && <p className="settings-success" role="status">Nutrition goals saved successfully.</p>}</div>
           </form>
         </section>
+        {user && <section className="settings-card settings-import-card" aria-labelledby="guest-import-heading"><div className="settings-card-heading"><div><p className="dashboard-kicker">Move browser data</p><h2 id="guest-import-heading">Import Guest Data</h2><p>Review and optionally copy data saved in guest mode into this account. Nothing is imported until you confirm it in the preview.</p></div></div><div className="settings-import-actions"><button className="settings-import-button" type="button" onClick={() => { const result = openImport(); setImportMessage(result.opened ? '' : result.reason === 'no-eligible-data' ? 'No eligible guest data is available in this browser.' : 'Guest data import is not ready yet. Please try again in a moment.') }}>Import Guest Data</button>{importMessage && <p className="settings-import-message" role="status">{importMessage}</p>}</div></section>}
       </main>
     </div>
   )
