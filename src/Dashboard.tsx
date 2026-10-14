@@ -3,8 +3,8 @@ import DashboardSidebar from './DashboardSidebar'
 import { calculateMealCalories, calculateNutritionTotals, dateKey, getEntriesForDate, mealCategories, type MealCategory } from './foodData'
 import { FoodEntriesStatus } from './FoodEntriesStatus'
 import { useFoodEntries } from './FoodEntriesProvider'
-import { getInitials, useProfile } from './profileData'
-import { useNutritionGoals } from './settingsData'
+import { getInitials } from './profileData'
+import { useUserData } from './UserDataProvider'
 
 function formatNumber(value: number) { return Number.isInteger(value) ? String(value) : value.toFixed(1) }
 function formatMacro(value: number | null, completeness: 'empty' | 'complete' | 'partial') { return completeness === 'partial' ? '—' : `${formatNumber(value ?? 0)}g` }
@@ -15,8 +15,8 @@ const dashboardGreeting = dashboardToday.getHours() < 12 ? 'Good morning' : dash
 
 function Dashboard() {
   const { entries, loading: foodLoading, error: foodError } = useFoodEntries()
-  const [profile] = useProfile()
-  const [goals] = useNutritionGoals()
+  const { profile, nutritionGoals: goals, loading: userDataLoading, error: userDataError } = useUserData()
+  if (userDataLoading || !profile || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="dashboard" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your profile and nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}</main></div>
   const displayName = profile.fullName.trim() || 'User'
   const todayEntries = getEntriesForDate(entries, dateKey(dashboardToday))
   const dailyTotals = calculateNutritionTotals(todayEntries)

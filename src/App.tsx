@@ -13,6 +13,7 @@ import Signup from './Signup'
 import ForgotPassword from './ForgotPassword'
 import UpdatePassword from './UpdatePassword'
 import { AuthProvider } from './auth/AuthProvider'
+import { UserDataProvider } from './UserDataProvider'
 import { FoodEntriesProvider } from './FoodEntriesProvider'
 
 const features = [
@@ -138,7 +139,7 @@ function AppRoutes() {
 }
 
 function App() {
-  return <AuthProvider><FoodEntriesProvider><AppRoutes /></FoodEntriesProvider></AuthProvider>
+  return <AuthProvider><UserDataProvider><FoodEntriesProvider><AppRoutes /></FoodEntriesProvider></UserDataProvider></AuthProvider>
 }
 
 export default App

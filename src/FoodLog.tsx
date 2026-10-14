@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './FoodLog.css'
 import DashboardSidebar from './DashboardSidebar'
 import { calculateNutritionTotals, dateFromKey, dateKey, getEntriesForDate, isValidDateKey, mealCategories, type FoodEntry, type MealCategory } from './foodData'
-import { useNutritionGoals } from './settingsData'
+import { useUserData } from './UserDataProvider'
 import { FoodEntriesStatus } from './FoodEntriesStatus'
 import { useFoodEntries } from './FoodEntriesProvider'
 
@@ -22,7 +22,7 @@ function FoodLog() {
     return isValidDateKey(requestedDate) ? dateFromKey(requestedDate) : new Date()
   })
   const { entries, loading: foodLoading, error: foodError, saving, addEntry, updateEntry, deleteEntry } = useFoodEntries()
-  const [goals] = useNutritionGoals()
+  const { nutritionGoals: goals, loading: userDataLoading, error: userDataError } = useUserData()
   const [highlightedMeal, setHighlightedMeal] = useState<MealCategory | null>(() => {
     const requestedMeal = new URLSearchParams(window.location.search).get('meal')
     return mealCategories.find((meal) => meal === requestedMeal) ?? null
@@ -41,8 +41,8 @@ function FoodLog() {
   const selectedDateKey = dateKey(selectedDate)
   const selectedEntries = getEntriesForDate(entries, selectedDateKey)
   const dailyTotals = calculateNutritionTotals(selectedEntries)
-  const caloriesRemaining = Math.max(goals.calories - dailyTotals.calories, 0)
-  const calorieProgress = Math.min((dailyTotals.calories / goals.calories) * 100, 100)
+  const caloriesRemaining = Math.max(goals!.calories - dailyTotals.calories, 0)
+  const calorieProgress = Math.min((dailyTotals.calories / goals!.calories) * 100, 100)
   const dialogIsOpen = Boolean(activeMeal || entryToDelete)
 
   useEffect(() => {
@@ -88,6 +88,8 @@ function FoodLog() {
     const timeout = window.setTimeout(() => setHighlightedMeal(null), 2400)
     return () => { cancelAnimationFrame(frame); window.clearTimeout(timeout) }
   }, [highlightedMeal])
+
+  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="food" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}</main></div>
 
   function shiftDate(days: number) { setSelectedDate((date) => { const nextDate = new Date(date); nextDate.setDate(nextDate.getDate() + days); return nextDate }) }
   function openAddFood(mealName: MealCategory) { setForm(emptyForm(mealName)); setEditingEntryId(null); setErrors({}); setValidationMessage(''); setOpenMenuId(null); setActiveMeal(mealName) }

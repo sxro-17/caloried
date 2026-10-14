@@ -1,21 +1,24 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './Profile.css'
 import DashboardSidebar from './DashboardSidebar'
-import { getInitials, saveProfile, useProfile, type ProfileData } from './profileData'
-import { useNutritionGoals } from './settingsData'
+import { getInitials, type ProfileData } from './profileData'
+import { useUserData } from './UserDataProvider'
 
 type ProfileErrors = Partial<Record<keyof ProfileData, string>>
 
 function Profile() {
-  const [profile, setProfile] = useProfile()
-  const [goals] = useNutritionGoals()
-  const [form, setForm] = useState<ProfileData>(profile)
+  const { profile, nutritionGoals: goals, loading, error, profileSaving, saveProfile } = useUserData()
+  const [form, setForm] = useState<ProfileData>({ fullName: '', age: '', height: '', weight: '' })
   const [isEditing, setIsEditing] = useState(false)
   const [errors, setErrors] = useState<ProfileErrors>({})
   const [storageWarning, setStorageWarning] = useState('')
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
-  const displayName = profile.fullName.trim() || 'User'
+  const displayName = profile?.fullName.trim() || 'User'
+
+  useEffect(() => {
+    if (profile && !isEditing) setForm(profile)
+  }, [isEditing, profile])
 
   useEffect(() => {
     if (!isEditing) return
@@ -38,7 +41,7 @@ function Profile() {
     return () => { document.removeEventListener('keydown', handleKeyDown); document.body.style.overflow = ''; previouslyFocusedRef.current?.focus() }
   }, [isEditing])
 
-  function openEditor() { setForm(profile); setErrors({}); setIsEditing(true) }
+  function openEditor() { if (profile) { setForm(profile); setErrors({}); setIsEditing(true) } }
   function closeEditor() { setIsEditing(false); setErrors({}) }
   function updateField(field: keyof ProfileData, value: string) { setForm((current) => ({ ...current, [field]: value })); setErrors((current) => ({ ...current, [field]: undefined })) }
   function validateForm() {
@@ -52,15 +55,19 @@ function Profile() {
     }
     return nextErrors
   }
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextErrors = validateForm()
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
     const nextProfile = { ...form, fullName: form.fullName.trim() }
-    setProfile(nextProfile)
-    setStorageWarning(saveProfile(nextProfile) ? '' : 'Your profile was updated for this session, but may not persist after refreshing.')
-    setIsEditing(false)
+    const didSave = await saveProfile(nextProfile)
+    if (didSave) { setStorageWarning(''); setIsEditing(false) }
+    else setStorageWarning('Your profile could not be saved. Your changes are still in the form; please try again.')
+  }
+
+  if (loading || !profile || !goals || error) {
+    return <div className="dashboard-shell profile-shell"><DashboardSidebar active="profile" /><main className="dashboard-main profile-main">{loading && <p role="status">Loading your profile and nutrition goals…</p>}{error && <p className="storage-warning" role="alert">{error}</p>}{!loading && !error && (!profile || !goals) && <p className="storage-warning" role="alert">Your account data is unavailable.</p>}</main></div>
   }
 
   return (
@@ -68,6 +75,7 @@ function Profile() {
       <DashboardSidebar active="profile" />
       <main className="dashboard-main profile-main">
         {storageWarning && <p className="storage-warning" role="alert">{storageWarning}</p>}
+        {profileSaving && <p role="status">Saving your profile…</p>}
         <header className="profile-page-header"><div><p className="dashboard-kicker">Your account</p><h1>Profile</h1><p className="profile-description">Manage your personal information and nutrition preferences.</p></div></header>
         <section className="profile-hero-card"><div className="profile-large-avatar">{getInitials(displayName)}</div><div><h2>{displayName}</h2><p>Calorie’d Member</p></div><button className="profile-edit-button" type="button" onClick={openEditor}>Edit Profile</button></section>
         <div className="profile-content-grid"><section className="profile-info-card"><div className="profile-card-heading"><div><p className="dashboard-kicker">About you</p><h2>Personal Information</h2></div></div><dl className="profile-details"><div><dt>Full Name</dt><dd>{profile.fullName || '—'}</dd></div><div><dt>Age</dt><dd>{profile.age ? `${profile.age} years` : '—'}</dd></div><div><dt>Height</dt><dd>{profile.height ? `${profile.height} cm` : '—'}</dd></div><div><dt>Weight</dt><dd>{profile.weight ? `${profile.weight} kg` : '—'}</dd></div></dl></section><section className="profile-goals-card"><p className="dashboard-kicker">Your daily target</p><h2>My Nutrition Goals</h2><div className="profile-goal-value"><strong>{goals.calories.toLocaleString()}</strong><span>calories per day</span></div><button className="manage-goals-button" type="button" disabled>Manage Goals in Settings</button><small>Settings will be available in a future update.</small></section></div>

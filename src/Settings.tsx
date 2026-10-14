@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import DashboardSidebar from './DashboardSidebar'
-import { defaultNutritionGoals, nutritionGoalLimits, saveNutritionGoals, useNutritionGoals, type NutritionGoals } from './settingsData'
+import { nutritionGoalLimits, type NutritionGoals } from './settingsData'
+import { useUserData } from './UserDataProvider'
 import './Settings.css'
 
 type GoalField = keyof NutritionGoals
@@ -22,11 +23,13 @@ function goalsToForm(goals: NutritionGoals): GoalForm {
 }
 
 function Settings() {
-  const [goals] = useNutritionGoals()
-  const [form, setForm] = useState<GoalForm>(() => goalsToForm(goals || defaultNutritionGoals))
+  const { nutritionGoals: goals, loading, error, goalsSaving: _goalsSaving, saveNutritionGoals } = useUserData()
+  const [form, setForm] = useState<GoalForm>(() => goalsToForm(goals || { calories: 2200, protein: 128, carbohydrates: 310, fat: 76 }))
   const [errors, setErrors] = useState<GoalErrors>({})
   const [saved, setSaved] = useState(false)
   const [storageWarning, setStorageWarning] = useState('')
+
+  useEffect(() => { if (goals && !saved) setForm(goalsToForm(goals)) }, [goals, saved])
 
   const updateField = (field: GoalField, value: string) => {
     setSaved(false)
@@ -48,15 +51,16 @@ function Settings() {
     return Object.keys(nextErrors).length ? null : values
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextGoals = validate()
     if (!nextGoals) return
-    const didSave = saveNutritionGoals(nextGoals)
-    setForm(goalsToForm(nextGoals))
-    setSaved(didSave)
-    setStorageWarning(didSave ? '' : 'Your goals were updated for this session, but may not persist after refreshing.')
+    const didSave = await saveNutritionGoals(nextGoals)
+    if (didSave) { setForm(goalsToForm(nextGoals)); setSaved(true); setStorageWarning('') }
+    else { setSaved(false); setStorageWarning('Your goals could not be saved. Your changes are still in the form; please try again.') }
   }
+
+  if (loading || !goals || error) return <div className="dashboard-shell"><DashboardSidebar active="settings" /><main className="dashboard-main settings-main">{loading && <p role="status">Loading your profile and nutrition goals…</p>}{error && <p className="storage-warning" role="alert">{error}</p>}</main></div>
 
   return (
     <div className="dashboard-shell">

@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import './Dashboard.css'
 import logoSrc from './assets/caloried-logo.svg'
-import { getInitials, useProfile } from './profileData'
+import { getInitials } from './profileData'
+import { useUserData } from './UserDataProvider'
 import { useAuth } from './auth/useAuth'
 
 type IconName = 'dashboard' | 'food' | 'history' | 'settings' | 'help'
@@ -19,10 +20,10 @@ function Icon({ name }: { name: IconName }) {
 }
 
 function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history' | 'settings' | 'help' | 'profile' }) {
-  const [profile] = useProfile()
+  const { profile, loading: userDataLoading } = useUserData()
   const { user, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
-  const profileName = profile.fullName.trim() || 'User'
+  const profileName = profile?.fullName.trim() || (userDataLoading ? 'Loading…' : 'User')
   useEffect(() => {
     if (!menuOpen) return
     function closeOnEscape(event: KeyboardEvent) { if (event.key === 'Escape') setMenuOpen(false) }

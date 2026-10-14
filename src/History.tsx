@@ -3,7 +3,7 @@ import DashboardSidebar from './DashboardSidebar'
 import { calculateNutritionTotals, dateKey, getEntriesForDate } from './foodData'
 import { FoodEntriesStatus } from './FoodEntriesStatus'
 import { useFoodEntries } from './FoodEntriesProvider'
-import { useNutritionGoals } from './settingsData'
+import { useUserData } from './UserDataProvider'
 
 type DayRecord = { key: string; date: Date; calories: number; hasEntries: boolean }
 
@@ -24,7 +24,8 @@ function getLastSevenDays(entries: ReturnType<typeof useFoodEntries>['entries'])
 
 function History() {
   const { entries, loading: foodLoading, error: foodError } = useFoodEntries()
-  const [goals] = useNutritionGoals()
+  const { nutritionGoals: goals, loading: userDataLoading, error: userDataError } = useUserData()
+  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell history-shell"><DashboardSidebar active="history" /><main className="dashboard-main history-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}</main></div>
   const days = getLastSevenDays(entries)
   const chartMax = Math.max(goals.calories, ...days.map((day) => day.calories))
   const todayKey = days[days.length - 1]?.key
