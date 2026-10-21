@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './Profile.css'
 import DashboardSidebar from './DashboardSidebar'
 import { getInitials, type ProfileData } from './profileData'
-import { useUserData } from './UserDataProvider'
+import { useUserData } from './UserDataContext'
 
 type ProfileErrors = Partial<Record<keyof ProfileData, string>>
 
 function Profile() {
-  const { profile, nutritionGoals: goals, loading, error, profileSaving, saveProfile } = useUserData()
+  const { profile, nutritionGoals: goals, loading, error, profileSaving, saveProfile, retryUserData } = useUserData()
   const [form, setForm] = useState<ProfileData>({ fullName: '', age: '', height: '', weight: '' })
   const [isEditing, setIsEditing] = useState(false)
   const [errors, setErrors] = useState<ProfileErrors>({})
@@ -15,10 +15,6 @@ function Profile() {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
   const displayName = profile?.fullName.trim() || 'User'
-
-  useEffect(() => {
-    if (profile && !isEditing) setForm(profile)
-  }, [isEditing, profile])
 
   useEffect(() => {
     if (!isEditing) return
@@ -67,7 +63,7 @@ function Profile() {
   }
 
   if (loading || !profile || !goals || error) {
-    return <div className="dashboard-shell profile-shell"><DashboardSidebar active="profile" /><main className="dashboard-main profile-main">{loading && <p role="status">Loading your profile and nutrition goals…</p>}{error && <p className="storage-warning" role="alert">{error}</p>}{!loading && !error && (!profile || !goals) && <p className="storage-warning" role="alert">Your account data is unavailable.</p>}</main></div>
+    return <div className="dashboard-shell profile-shell"><DashboardSidebar active="profile" /><main className="dashboard-main profile-main">{loading && <p role="status">Loading your profile and nutrition goals…</p>}{error && <div className="storage-warning" role="alert"><span>{error}</span><button type="button" onClick={retryUserData}>Try again</button></div>}{!loading && !error && (!profile || !goals) && <p className="storage-warning" role="alert">Your account data is unavailable.</p>}</main></div>
   }
 
   return (

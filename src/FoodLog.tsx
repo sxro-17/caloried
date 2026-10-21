@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import './FoodLog.css'
 import DashboardSidebar from './DashboardSidebar'
 import { calculateNutritionTotals, dateFromKey, dateKey, getEntriesForDate, isValidDateKey, mealCategories, type FoodEntry, type MealCategory } from './foodData'
-import { useUserData } from './UserDataProvider'
+import { useUserData } from './UserDataContext'
 import { FoodEntriesStatus } from './FoodEntriesStatus'
-import { useFoodEntries } from './FoodEntriesProvider'
+import { useFoodEntries } from './FoodEntriesContext'
 
 type FoodForm = { foodName: string; mealCategory: MealCategory; servingSize: string; servingUnit: string; calories: string; protein: string; carbohydrates: string; fat: string }
 type FoodErrors = Partial<Record<keyof FoodForm, string>>
@@ -21,8 +21,8 @@ function FoodLog() {
     const requestedDate = new URLSearchParams(window.location.search).get('date')
     return isValidDateKey(requestedDate) ? dateFromKey(requestedDate) : new Date()
   })
-  const { entries, loading: foodLoading, error: foodError, saving, addEntry, updateEntry, deleteEntry } = useFoodEntries()
-  const { nutritionGoals: goals, loading: userDataLoading, error: userDataError } = useUserData()
+  const { entries, loading: foodLoading, error: foodError, saving, addEntry, updateEntry, deleteEntry, refreshEntries } = useFoodEntries()
+  const { nutritionGoals: goals, loading: userDataLoading, error: userDataError, retryUserData } = useUserData()
   const [highlightedMeal, setHighlightedMeal] = useState<MealCategory | null>(() => {
     const requestedMeal = new URLSearchParams(window.location.search).get('meal')
     return mealCategories.find((meal) => meal === requestedMeal) ?? null
@@ -87,7 +87,7 @@ function FoodLog() {
     return () => { cancelAnimationFrame(frame); window.clearTimeout(timeout) }
   }, [highlightedMeal])
 
-  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="food" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}{!userDataLoading && !userDataError && !goals && <p className="storage-warning" role="alert">Your nutrition goals are unavailable. Please refresh and try again.</p>}</main></div>
+  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="food" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <div className="storage-warning" role="alert"><span>{userDataError}</span><button type="button" onClick={retryUserData}>Try again</button></div>}{!userDataLoading && !userDataError && !goals && <p className="storage-warning" role="alert">Your nutrition goals are unavailable. Please refresh and try again.</p>}</main></div>
 
   const caloriesRemaining = Math.max(goals.calories - dailyTotals.calories, 0)
   const calorieProgress = Math.min((dailyTotals.calories / goals.calories) * 100, 100)
@@ -136,7 +136,7 @@ function FoodLog() {
       <main className="dashboard-main food-log-main">
         <header className="food-log-header"><div><p className="dashboard-kicker">Your meals, at a glance</p><h1>Food Log</h1><p className="food-log-description">Keep a simple record of what you eat throughout the day.</p></div><div className="food-log-date-controls"><button type="button" onClick={() => shiftDate(-1)}>← <span>Previous</span></button><strong>{formatDate(selectedDate)}</strong><button type="button" onClick={() => shiftDate(1)}><span>Next</span> →</button></div></header>
         {storageWarning && <p className="storage-warning" role="alert">{storageWarning}</p>}
-        <FoodEntriesStatus loading={foodLoading} error={foodError} />
+        <FoodEntriesStatus loading={foodLoading} error={foodError} onRetry={refreshEntries} />
         {!foodLoading && !foodError && <>
         <section className="food-summary-card" aria-label="Daily summary"><div className="food-summary-heading"><div><p className="dashboard-kicker">Daily Summary</p><strong>{formatNumber(dailyTotals.calories)} <small>of {goals.calories.toLocaleString()} kcal</small></strong></div><span className="summary-remaining">{formatNumber(caloriesRemaining)} kcal remaining</span></div><div className="food-summary-progress"><span style={{ width: `${calorieProgress}%` }} /></div><div className="food-summary-macros"><div><span className="summary-dot protein" />Protein <strong>{formatMacro(dailyTotals.protein, dailyTotals.macroCompleteness.protein)}</strong>{dailyTotals.macroCompleteness.protein === 'partial' && <small className="macro-incomplete">Incomplete</small>}</div><div><span className="summary-dot carbs" />Carbs <strong>{formatMacro(dailyTotals.carbohydrates, dailyTotals.macroCompleteness.carbohydrates)}</strong>{dailyTotals.macroCompleteness.carbohydrates === 'partial' && <small className="macro-incomplete">Incomplete</small>}</div><div><span className="summary-dot fats" />Fats <strong>{formatMacro(dailyTotals.fat, dailyTotals.macroCompleteness.fat)}</strong>{dailyTotals.macroCompleteness.fat === 'partial' && <small className="macro-incomplete">Incomplete</small>}</div></div></section>
         <section className="food-meals-section"><div className="food-meals-heading"><div><p className="dashboard-kicker">Your day</p><h2>Meals</h2></div></div><div className="food-meals-grid">{mealCategories.map((mealName) => { const mealEntries = selectedEntries.filter((entry) => entry.mealCategory === mealName); const mealTotal = mealEntries.reduce((total, entry) => total + entry.calories, 0); return <article className={`food-meal-card ${mealClassNames[mealName]} ${highlightedMeal === mealName ? 'is-highlighted' : ''}`} id={`meal-${mealName.toLowerCase()}`} key={mealName}><header><div><h3>{mealName}</h3><span>{mealEntries.length} {mealEntries.length === 1 ? 'item' : 'items'}</span></div><strong>{formatNumber(mealTotal)} kcal</strong></header><div className="food-table-heading"><span>Food name</span><span>Serving</span><span>Calories</span><span aria-hidden="true" /></div><div className="food-items">{mealEntries.length === 0 ? <p className="food-empty-state">No foods logged yet.</p> : mealEntries.map((entry) => <div className="food-item" key={entry.id}><span>{entry.foodName}</span><span>{formatNumber(entry.servingSize)} {entry.servingUnit}</span><strong>{formatNumber(entry.calories)} kcal</strong><div className="food-entry-menu"><button className="food-entry-menu-button" type="button" aria-label={`Actions for ${entry.foodName}`} aria-expanded={openMenuId === entry.id} aria-haspopup="menu" onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}>⋮</button>{openMenuId === entry.id && <div className="food-entry-menu-list" role="menu"><button type="button" role="menuitem" onClick={() => openEditFood(entry)}>Edit</button><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setEntryToDelete(entry) }}>Delete</button></div>}</div></div>)}</div><button className="food-add-button" type="button" onClick={() => openAddFood(mealName)}>+ Add Food</button></article> })}</div></section>

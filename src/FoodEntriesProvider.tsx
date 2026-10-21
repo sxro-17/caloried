@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from './auth/useAuth'
 import { supabase } from './supabaseClient'
 import { loadFoodEntries, saveFoodEntries, type FoodEntry } from './foodData'
+import { FoodEntriesContext } from './FoodEntriesContext'
 
 type CloudFoodEntry = {
   id: string
@@ -15,20 +16,15 @@ type CloudFoodEntry = {
   carbohydrates: number | null
   fat: number | null
 }
-
-type FoodEntriesContextValue = {
-  entries: FoodEntry[]
-  loading: boolean
-  saving: boolean
-  error: string
-  addEntry: (entry: FoodEntry) => Promise<string | null>
-  updateEntry: (entry: FoodEntry) => Promise<string | null>
-  deleteEntry: (id: string) => Promise<string | null>
-  refreshEntries: () => void
-}
-
-const FoodEntriesContext = createContext<FoodEntriesContextValue | undefined>(undefined)
 const cloudColumns = 'id,date,food_name,meal_category,serving_size,serving_unit,calories,protein,carbohydrates,fat'
+const cloudLoadTimeoutMs = 10000
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number) {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => reject(new Error('Cloud load timed out')), timeoutMs)
+    promise.then((value) => { window.clearTimeout(timeoutId); resolve(value) }, (reason: unknown) => { window.clearTimeout(timeoutId); reject(reason) })
+  })
+}
 
 function mapCloudEntry(entry: CloudFoodEntry): FoodEntry {
   return { id: entry.id, date: entry.date, foodName: entry.food_name, mealCategory: entry.meal_category, servingSize: Number(entry.serving_size), servingUnit: entry.serving_unit, calories: Number(entry.calories), protein: entry.protein === null ? null : Number(entry.protein), carbohydrates: entry.carbohydrates === null ? null : Number(entry.carbohydrates), fat: entry.fat === null ? null : Number(entry.fat) }
@@ -46,6 +42,7 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
   const generationRef = useRef(0)
   const operationRef = useRef(0)
   const savingRef = useRef(false)
+  const loadingRef = useRef(false)
 
   useEffect(() => {
     const generation = ++generationRef.current
@@ -53,6 +50,10 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
     setEntries([])
     setError('')
     setLoading(true)
+    operationRef.current += 1
+    savingRef.current = false
+    setSaving(false)
+    loadingRef.current = true
 
     if (authLoading) return () => { active = false }
 
@@ -60,6 +61,7 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
       const syncGuestEntries = () => { if (active && generation === generationRef.current) setEntries(loadFoodEntries()) }
       syncGuestEntries()
       setLoading(false)
+      loadingRef.current = false
       window.addEventListener('storage', syncGuestEntries)
       window.addEventListener('caloried-food-entries-updated', syncGuestEntries)
       return () => {
@@ -72,7 +74,7 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
     const userId = user.id
     void (async () => {
       try {
-        const { data, error: queryError } = await supabase.from('food_entries').select(cloudColumns).eq('user_id', userId).order('date', { ascending: false }).order('created_at', { ascending: true })
+        const { data, error: queryError } = await withTimeout(supabase.from('food_entries').select(cloudColumns).eq('user_id', userId).order('date', { ascending: false }).order('created_at', { ascending: true }), cloudLoadTimeoutMs)
         if (!active || generation !== generationRef.current) return
         if (queryError) {
           setEntries([])
@@ -81,15 +83,17 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
           setEntries((data as CloudFoodEntry[]).map(mapCloudEntry))
         }
         setLoading(false)
+        loadingRef.current = false
       } catch {
         if (!active || generation !== generationRef.current) return
         setEntries([])
         setError('We could not load your cloud food entries. Please check your connection and try again.')
         setLoading(false)
+        loadingRef.current = false
       }
     })()
 
-    return () => { active = false }
+    return () => { active = false; loadingRef.current = false; if (generation === generationRef.current) generationRef.current += 1 }
   }, [authLoading, refreshToken, user])
 
   async function addEntry(entry: FoodEntry) {
@@ -164,12 +168,11 @@ export function FoodEntriesProvider({ children }: { children: ReactNode }) {
     finally { if (operation === operationRef.current) { savingRef.current = false; setSaving(false) } }
   }
 
-  const value = { entries, loading, saving, error, addEntry, updateEntry, deleteEntry, refreshEntries: () => setRefreshToken((current) => current + 1) }
-  return <FoodEntriesContext.Provider value={value}>{children}</FoodEntriesContext.Provider>
-}
+  function refreshEntries() {
+    if (loadingRef.current) return
+    setRefreshToken((current) => current + 1)
+  }
 
-export function useFoodEntries() {
-  const context = useContext(FoodEntriesContext)
-  if (!context) throw new Error('useFoodEntries must be used within FoodEntriesProvider')
-  return context
+  const value = { entries, loading, saving, error, addEntry, updateEntry, deleteEntry, refreshEntries }
+  return <FoodEntriesContext.Provider value={value}>{children}</FoodEntriesContext.Provider>
 }

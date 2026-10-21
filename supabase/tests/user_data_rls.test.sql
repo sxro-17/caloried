@@ -5,7 +5,7 @@
 
 begin;
 
-select plan(53);
+select plan(79);
 
 select tests.create_supabase_user('user1@test.com');
 select tests.create_supabase_user('user2@test.com');
@@ -57,6 +57,37 @@ select is(
   'RLS is enabled on food_entries'
 );
 
+-- Explicit Data API grants: authenticated users retain only the operations
+-- exposed by the application, and anon receives no table privileges.
+select is(has_table_privilege('authenticated', 'public.profiles', 'SELECT'), true, 'Authenticated users can select profiles');
+select is(has_table_privilege('authenticated', 'public.profiles', 'INSERT'), true, 'Authenticated users can insert profiles');
+select is(has_table_privilege('authenticated', 'public.profiles', 'UPDATE'), true, 'Authenticated users can update profiles');
+select is(has_table_privilege('authenticated', 'public.profiles', 'DELETE'), false, 'Authenticated users cannot delete profiles');
+select is(has_table_privilege('authenticated', 'public.nutrition_goals', 'SELECT'), true, 'Authenticated users can select nutrition goals');
+select is(has_table_privilege('authenticated', 'public.nutrition_goals', 'INSERT'), true, 'Authenticated users can insert nutrition goals');
+select is(has_table_privilege('authenticated', 'public.nutrition_goals', 'UPDATE'), true, 'Authenticated users can update nutrition goals');
+select is(has_table_privilege('authenticated', 'public.nutrition_goals', 'DELETE'), false, 'Authenticated users cannot delete nutrition goals');
+select is(has_table_privilege('authenticated', 'public.food_entries', 'SELECT'), true, 'Authenticated users can select food entries');
+select is(has_table_privilege('authenticated', 'public.food_entries', 'INSERT'), true, 'Authenticated users can insert food entries');
+select is(has_table_privilege('authenticated', 'public.food_entries', 'UPDATE'), true, 'Authenticated users can update food entries');
+select is(has_table_privilege('authenticated', 'public.food_entries', 'DELETE'), true, 'Authenticated users can delete food entries');
+
+select is(has_table_privilege('anon', 'public.profiles', 'SELECT'), false, 'Anonymous users cannot select profiles');
+select is(has_table_privilege('anon', 'public.profiles', 'INSERT'), false, 'Anonymous users cannot insert profiles');
+select is(has_table_privilege('anon', 'public.profiles', 'UPDATE'), false, 'Anonymous users cannot update profiles');
+select is(has_table_privilege('anon', 'public.profiles', 'DELETE'), false, 'Anonymous users cannot delete profiles');
+select is(has_table_privilege('anon', 'public.nutrition_goals', 'SELECT'), false, 'Anonymous users cannot select nutrition goals');
+select is(has_table_privilege('anon', 'public.nutrition_goals', 'INSERT'), false, 'Anonymous users cannot insert nutrition goals');
+select is(has_table_privilege('anon', 'public.nutrition_goals', 'UPDATE'), false, 'Anonymous users cannot update nutrition goals');
+select is(has_table_privilege('anon', 'public.nutrition_goals', 'DELETE'), false, 'Anonymous users cannot delete nutrition goals');
+select is(has_table_privilege('anon', 'public.food_entries', 'SELECT'), false, 'Anonymous users cannot select food entries');
+select is(has_table_privilege('anon', 'public.food_entries', 'INSERT'), false, 'Anonymous users cannot insert food entries');
+select is(has_table_privilege('anon', 'public.food_entries', 'UPDATE'), false, 'Anonymous users cannot update food entries');
+select is(has_table_privilege('anon', 'public.food_entries', 'DELETE'), false, 'Anonymous users cannot delete food entries');
+
+select is((select count(*)::integer from pg_catalog.pg_policies where schemaname = 'public' and tablename = 'profiles' and policyname = 'profiles_delete_own'), 0, 'Profile delete policy is removed');
+select is((select count(*)::integer from pg_catalog.pg_policies where schemaname = 'public' and tablename = 'nutrition_goals' and policyname = 'nutrition_goals_delete_own'), 0, 'Nutrition-goal delete policy is removed');
+
 select tests.authenticate_as('user1@test.com');
 
 select is(
@@ -100,12 +131,13 @@ select lives_ok(
   'User 1 can update their own food entry'
 );
 
-select lives_ok(
+select throws_ok(
   $$
     delete from public.profiles
     where user_id = tests.get_supabase_uid('user1@test.com')
   $$,
-  'User 1 can delete their own profile'
+  '42501',
+  'User 1 cannot delete their own profile'
 );
 select lives_ok(
   $$
@@ -114,12 +146,13 @@ select lives_ok(
   $$,
   'User 1 can insert their own profile'
 );
-select lives_ok(
+select throws_ok(
   $$
     delete from public.nutrition_goals
     where user_id = tests.get_supabase_uid('user1@test.com')
   $$,
-  'User 1 can delete their own nutrition goals'
+  '42501',
+  'User 1 cannot delete their own nutrition goals'
 );
 select lives_ok(
   $$
@@ -197,13 +230,16 @@ select throws_ok(
   'User 1 cannot insert User 2 food data'
 );
 
--- These deletes match no visible rows under RLS and therefore must not remove User 2 data.
-select lives_ok(
+-- Profile and nutrition-goal deletes are denied at the Data API grant layer;
+-- food-entry deletes remain policy-scoped to the current user.
+select throws_ok(
   $$ delete from public.profiles where user_id = tests.get_supabase_uid('user2@test.com') $$,
+  '42501',
   'User 1 cannot delete User 2 profile data'
 );
-select lives_ok(
+select throws_ok(
   $$ delete from public.nutrition_goals where user_id = tests.get_supabase_uid('user2@test.com') $$,
+  '42501',
   'User 1 cannot delete User 2 nutrition goals'
 );
 select lives_ok(
@@ -259,12 +295,13 @@ select lives_ok(
   'User 2 can update their own food entry'
 );
 
-select lives_ok(
+select throws_ok(
   $$
     delete from public.profiles
     where user_id = tests.get_supabase_uid('user2@test.com')
   $$,
-  'User 2 can delete their own profile'
+  '42501',
+  'User 2 cannot delete their own profile'
 );
 select lives_ok(
   $$
@@ -273,12 +310,13 @@ select lives_ok(
   $$,
   'User 2 can insert their own profile'
 );
-select lives_ok(
+select throws_ok(
   $$
     delete from public.nutrition_goals
     where user_id = tests.get_supabase_uid('user2@test.com')
   $$,
-  'User 2 can delete their own nutrition goals'
+  '42501',
+  'User 2 cannot delete their own nutrition goals'
 );
 select lives_ok(
   $$
@@ -334,12 +372,14 @@ select throws_ok(
   'User 2 cannot change food-entry ownership'
 );
 
-select lives_ok(
+select throws_ok(
   $$ delete from public.profiles where user_id = tests.get_supabase_uid('user1@test.com') $$,
+  '42501',
   'User 2 cannot delete User 1 profile data'
 );
-select lives_ok(
+select throws_ok(
   $$ delete from public.nutrition_goals where user_id = tests.get_supabase_uid('user1@test.com') $$,
+  '42501',
   'User 2 cannot delete User 1 nutrition goals'
 );
 select lives_ok(

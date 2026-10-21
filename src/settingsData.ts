@@ -1,25 +1,15 @@
 import { useEffect, useState } from 'react'
+import { isValidNutritionGoals, nutritionGoalLimits } from './dataValidation'
 
 export type NutritionGoals = { calories: number; protein: number; carbohydrates: number; fat: number }
 
 export const settingsStorageKey = 'caloried-settings-v1'
 export const defaultNutritionGoals: NutritionGoals = { calories: 2200, protein: 128, carbohydrates: 310, fat: 76 }
-export const nutritionGoalLimits: Record<keyof NutritionGoals, { min: number; max: number }> = {
-  calories: { min: 0.01, max: 10000 },
-  protein: { min: 0.01, max: 1000 },
-  carbohydrates: { min: 0.01, max: 1000 },
-  fat: { min: 0.01, max: 1000 },
-}
+export { nutritionGoalLimits }
 const settingsUpdatedEvent = 'caloried-settings-updated'
 
 export function isNutritionGoals(value: unknown): value is NutritionGoals {
-  if (!value || typeof value !== 'object') return false
-  const goals = value as Partial<NutritionGoals>
-  return (Object.keys(nutritionGoalLimits) as (keyof NutritionGoals)[]).every((field) => {
-    const value = goals[field]
-    const limits = nutritionGoalLimits[field]
-    return typeof value === 'number' && Number.isFinite(value) && value >= limits.min && value <= limits.max
-  })
+  return isValidNutritionGoals(value)
 }
 
 export function loadNutritionGoals(): NutritionGoals {
@@ -32,6 +22,7 @@ export function loadNutritionGoals(): NutritionGoals {
 }
 
 export function saveNutritionGoals(goals: NutritionGoals) {
+  if (!isNutritionGoals(goals)) return false
   try {
     localStorage.setItem(settingsStorageKey, JSON.stringify(goals))
     window.dispatchEvent(new Event(settingsUpdatedEvent))

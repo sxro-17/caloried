@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isValidProfileData } from './dataValidation'
 
 export type ProfileData = { fullName: string; age: string; height: string; weight: string }
 
@@ -6,22 +7,17 @@ export const profileStorageKey = 'caloried-profile-v1'
 const profileUpdatedEvent = 'caloried-profile-updated'
 export const defaultProfile: ProfileData = { fullName: 'User', age: '', height: '', weight: '' }
 
-function isProfileData(value: unknown): value is ProfileData {
-  if (!value || typeof value !== 'object') return false
-  const profile = value as Partial<ProfileData>
-  return typeof profile.fullName === 'string' && typeof profile.age === 'string' && typeof profile.height === 'string' && typeof profile.weight === 'string'
-}
-
 export function loadProfile(): ProfileData {
   try {
     const storedProfile = localStorage.getItem(profileStorageKey)
     if (!storedProfile) return defaultProfile
     const parsedProfile: unknown = JSON.parse(storedProfile)
-    return isProfileData(parsedProfile) ? parsedProfile : defaultProfile
+    return isValidProfileData(parsedProfile) ? { ...parsedProfile, fullName: parsedProfile.fullName.trim() } : defaultProfile
   } catch { return defaultProfile }
 }
 
 export function saveProfile(profile: ProfileData) {
+  if (!isValidProfileData(profile)) return false
   try {
     localStorage.setItem(profileStorageKey, JSON.stringify(profile))
     window.dispatchEvent(new Event(profileUpdatedEvent))

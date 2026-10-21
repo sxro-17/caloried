@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import './Dashboard.css'
 import logoSrc from './assets/caloried-logo.svg'
 import { getInitials } from './profileData'
-import { useUserData } from './UserDataProvider'
+import { useUserData } from './UserDataContext'
 import { useAuth } from './auth/useAuth'
 
 type IconName = 'dashboard' | 'food' | 'history' | 'settings' | 'help'
@@ -23,6 +23,8 @@ function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history'
   const { profile, loading: userDataLoading } = useUserData()
   const { user, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
   const profileName = profile?.fullName.trim() || (userDataLoading ? 'Loading…' : 'User')
   useEffect(() => {
     if (!menuOpen) return
@@ -31,8 +33,15 @@ function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history'
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [menuOpen])
   async function handleLogout() {
-    const result = await signOut()
-    if (!result.error) window.location.assign('/')
+    if (loggingOut) return
+    setLoggingOut(true)
+    setLogoutError('')
+    try {
+      const result = await signOut()
+      if (result.error) setLogoutError(result.error)
+      else window.location.assign('/')
+    } catch { setLogoutError('We could not sign you out. Please check your connection and try again.') }
+    finally { setLoggingOut(false) }
   }
   return (
     <aside className={`dashboard-sidebar ${menuOpen ? 'menu-open' : ''}`}>
@@ -50,7 +59,7 @@ function DashboardSidebar({ active }: { active: 'dashboard' | 'food' | 'history'
         <div><strong>{profileName}</strong><span>Personal account</span></div>
         <span className="profile-more" aria-hidden="true">•••</span>
       </a>
-      {user && <button className="sidebar-logout" type="button" onClick={handleLogout}>Log out</button>}
+      {user && <>{logoutError && <p className="sidebar-logout-error" role="alert">{logoutError}</p>}<button className="sidebar-logout" type="button" onClick={handleLogout} disabled={loggingOut}>{loggingOut ? 'Logging out…' : 'Log out'}</button></>}
     </aside>
   )
 }

@@ -4,30 +4,24 @@ export type FoodEntry = { id: string; date: string; foodName: string; mealCatego
 export type MacroCompleteness = 'empty' | 'complete' | 'partial'
 export type NutritionTotals = { calories: number; protein: number | null; carbohydrates: number | null; fat: number | null; macroCompleteness: Record<MacroField, MacroCompleteness> }
 
-export const mealCategories: MealCategory[] = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
+import { isValidDateKey, isValidFoodEntry, mealCategories, normalizeFoodEntry } from './dataValidation'
+export { isValidDateKey, mealCategories }
 export const foodEntriesStorageKey = 'caloried-food-entries-v1'
 const foodEntriesUpdatedEvent = 'caloried-food-entries-updated'
 
-function isMealCategory(value: unknown): value is MealCategory { return typeof value === 'string' && mealCategories.includes(value as MealCategory) }
-function isValidMacro(value: unknown) { return value === undefined || value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0) }
-
-function isValidFoodEntry(value: unknown): value is FoodEntry {
-  if (!value || typeof value !== 'object') return false
-  const entry = value as Partial<FoodEntry>
-  return typeof entry.id === 'string' && typeof entry.date === 'string' && typeof entry.foodName === 'string' && isMealCategory(entry.mealCategory) && typeof entry.servingUnit === 'string' && typeof entry.servingSize === 'number' && Number.isFinite(entry.servingSize) && entry.servingSize > 0 && typeof entry.calories === 'number' && Number.isFinite(entry.calories) && entry.calories >= 0 && isValidMacro(entry.protein) && isValidMacro(entry.carbohydrates) && isValidMacro(entry.fat)
-}
-
-function normalizeFoodEntry(entry: FoodEntry): FoodEntry {
-  return { ...entry, protein: entry.protein ?? null, carbohydrates: entry.carbohydrates ?? null, fat: entry.fat ?? null }
+export function readStoredFoodEntries() {
+  try {
+    const storedEntries = localStorage.getItem(foodEntriesStorageKey)
+    if (!storedEntries) return { entries: [], invalidCount: 0 }
+    const parsedEntries: unknown = JSON.parse(storedEntries)
+    if (!Array.isArray(parsedEntries)) return { entries: [], invalidCount: 1 }
+    const entries = parsedEntries.filter(isValidFoodEntry).map(normalizeFoodEntry)
+    return { entries, invalidCount: parsedEntries.length - entries.length }
+  } catch { return { entries: [], invalidCount: 1 } }
 }
 
 export function loadFoodEntries(): FoodEntry[] {
-  try {
-    const storedEntries = localStorage.getItem(foodEntriesStorageKey)
-    if (!storedEntries) return []
-    const parsedEntries: unknown = JSON.parse(storedEntries)
-    return Array.isArray(parsedEntries) ? parsedEntries.filter(isValidFoodEntry).map(normalizeFoodEntry) : []
-  } catch { return [] }
+  return readStoredFoodEntries().entries
 }
 
 export function saveFoodEntries(entries: FoodEntry[]) {
@@ -39,12 +33,6 @@ export function saveFoodEntries(entries: FoodEntry[]) {
 }
 
 export function dateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
-export function isValidDateKey(value: string | null): value is string {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const [year, month, day] = value.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
-}
 export function dateFromKey(value: string) { const [year, month, day] = value.split('-').map(Number); return new Date(year, month - 1, day) }
 export function getEntriesForDate(entries: FoodEntry[], date: string) { return entries.filter((entry) => entry.date === date) }
 export function calculateNutritionTotals(entries: FoodEntry[]): NutritionTotals {

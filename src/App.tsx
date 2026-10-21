@@ -1,21 +1,22 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import './App.css'
 import logoSrc from './assets/caloried-logo.svg'
 import cookieSrc from './assets/cookie-bite.svg'
-import Dashboard from './Dashboard'
-import FoodLog from './FoodLog'
-import History from './History'
-import Profile from './Profile'
-import Settings from './Settings'
-import Help from './Help'
-import Login from './Login'
-import Signup from './Signup'
-import ForgotPassword from './ForgotPassword'
-import UpdatePassword from './UpdatePassword'
 import { AuthProvider } from './auth/AuthProvider'
 import { UserDataProvider } from './UserDataProvider'
 import { FoodEntriesProvider } from './FoodEntriesProvider'
 import { GuestDataImportProvider } from './GuestDataImportProvider'
+
+const Dashboard = lazy(() => import('./Dashboard'))
+const FoodLog = lazy(() => import('./FoodLog'))
+const History = lazy(() => import('./History'))
+const Profile = lazy(() => import('./Profile'))
+const Settings = lazy(() => import('./Settings'))
+const Help = lazy(() => import('./Help'))
+const Login = lazy(() => import('./Login'))
+const Signup = lazy(() => import('./Signup'))
+const ForgotPassword = lazy(() => import('./ForgotPassword'))
+const UpdatePassword = lazy(() => import('./UpdatePassword'))
 
 const features = [
   { title: 'Track Calories', description: 'Keep track of your daily calorie intake and stay on top of your goals.' },
@@ -126,17 +127,19 @@ function LandingPage() {
 }
 
 function AppRoutes() {
-  if (window.location.pathname === '/login') return <Login />
-  if (window.location.pathname === '/signup') return <Signup />
-  if (window.location.pathname === '/forgot-password') return <ForgotPassword />
-  if (window.location.pathname === '/update-password') return <UpdatePassword />
-  if (window.location.pathname === '/dashboard') return <Dashboard />
-  if (window.location.pathname === '/food-log') return <FoodLog />
-  if (window.location.pathname === '/history') return <History />
-  if (window.location.pathname === '/profile') return <Profile />
-  if (window.location.pathname === '/settings') return <Settings />
-  if (window.location.pathname === '/help') return <Help />
-  return <LandingPage />
+  const pathname = window.location.pathname
+  let route = <LandingPage />
+  if (pathname === '/login') route = <Login />
+  else if (pathname === '/signup') route = <Signup />
+  else if (pathname === '/forgot-password') route = <ForgotPassword />
+  else if (pathname === '/update-password') route = <UpdatePassword />
+  else if (pathname === '/dashboard') route = <Dashboard />
+  else if (pathname === '/food-log') route = <FoodLog />
+  else if (pathname === '/history') route = <History />
+  else if (pathname === '/profile') route = <Profile />
+  else if (pathname === '/settings') route = <Settings />
+  else if (pathname === '/help') route = <Help />
+  return <Suspense fallback={<main className="route-loading" aria-live="polite">Loading…</main>}>{route}</Suspense>
 }
 
 function App() {

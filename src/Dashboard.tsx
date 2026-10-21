@@ -1,24 +1,33 @@
 import './Dashboard.css'
+import { useEffect, useState } from 'react'
 import DashboardSidebar from './DashboardSidebar'
 import { calculateMealCalories, calculateNutritionTotals, dateKey, getEntriesForDate, mealCategories, type MealCategory } from './foodData'
 import { FoodEntriesStatus } from './FoodEntriesStatus'
-import { useFoodEntries } from './FoodEntriesProvider'
+import { useFoodEntries } from './FoodEntriesContext'
 import { getInitials } from './profileData'
-import { useUserData } from './UserDataProvider'
+import { useUserData } from './UserDataContext'
 
 function formatNumber(value: number) { return Number.isInteger(value) ? String(value) : value.toFixed(1) }
 function formatMacro(value: number | null, completeness: 'empty' | 'complete' | 'partial') { return completeness === 'partial' ? '—' : `${formatNumber(value ?? 0)}g` }
 function macroProgress(value: number | null, completeness: 'empty' | 'complete' | 'partial', goal: number) { return completeness === 'complete' && value !== null ? Math.min((value / goal) * 100, 100) : 0 }
-const dashboardToday = new Date()
-const dashboardCurrentDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(dashboardToday)
-const dashboardGreeting = dashboardToday.getHours() < 12 ? 'Good morning' : dashboardToday.getHours() < 18 ? 'Good afternoon' : 'Good evening'
-
 function Dashboard() {
-  const { entries, loading: foodLoading, error: foodError } = useFoodEntries()
-  const { profile, nutritionGoals: goals, loading: userDataLoading, error: userDataError } = useUserData()
-  if (userDataLoading || !profile || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="dashboard" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your profile and nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}{!userDataLoading && !userDataError && (!profile || !goals) && <p className="storage-warning" role="alert">Your account data is unavailable. Please refresh and try again.</p>}</main></div>
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    let timerId: number
+    const updateAtNextMinute = () => {
+      const delay = Math.max(1000, 60000 - (Date.now() % 60000) + 50)
+      timerId = window.setTimeout(() => { setNow(new Date()); updateAtNextMinute() }, delay)
+    }
+    updateAtNextMinute()
+    return () => window.clearTimeout(timerId)
+  }, [])
+  const { entries, loading: foodLoading, error: foodError, refreshEntries } = useFoodEntries()
+  const { profile, nutritionGoals: goals, loading: userDataLoading, error: userDataError, retryUserData } = useUserData()
+  if (userDataLoading || !profile || !goals || userDataError) return <div className="dashboard-shell"><DashboardSidebar active="dashboard" /><main className="dashboard-main">{userDataLoading && <p role="status">Loading your profile and nutrition goals…</p>}{userDataError && <div className="storage-warning" role="alert"><span>{userDataError}</span><button type="button" onClick={retryUserData}>Try again</button></div>}{!userDataLoading && !userDataError && (!profile || !goals) && <p className="storage-warning" role="alert">Your account data is unavailable. Please refresh and try again.</p>}</main></div>
   const displayName = profile.fullName.trim() || 'User'
-  const todayEntries = getEntriesForDate(entries, dateKey(dashboardToday))
+  const dashboardCurrentDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(now)
+  const dashboardGreeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
+  const todayEntries = getEntriesForDate(entries, dateKey(now))
   const dailyTotals = calculateNutritionTotals(todayEntries)
   const caloriesRemaining = Math.max(goals.calories - dailyTotals.calories, 0)
   const calorieProgress = Math.min((dailyTotals.calories / goals.calories) * 100, 100)
@@ -35,7 +44,7 @@ function Dashboard() {
       <main className="dashboard-main">
         <header className="dashboard-header"><div><p className="dashboard-kicker">Your daily overview</p><h1>{dashboardGreeting}, {displayName}<span>!</span></h1><p className="dashboard-date">{dashboardCurrentDate}</p></div><div className="header-avatar">{getInitials(displayName)}</div></header>
 
-        <FoodEntriesStatus loading={foodLoading} error={foodError} />
+        <FoodEntriesStatus loading={foodLoading} error={foodError} onRetry={refreshEntries} />
         {!foodLoading && !foodError && <>
         <section className="summary-grid" aria-label="Daily nutrition summary">
           <article className="summary-card calories-card"><div className="card-heading"><span>Daily Calories</span><span className="card-menu">•••</span></div><div className="calories-content"><div className="calorie-ring" style={{ background: `conic-gradient(var(--dashboard-deep) ${calorieProgress}%, #e9efeb 0)` }}><div className="calorie-ring-inner"><strong>{formatNumber(dailyTotals.calories)}</strong><span>of {goals.calories.toLocaleString()} kcal</span></div></div><div className="calories-copy"><strong>{formatNumber(caloriesRemaining)}</strong><span>calories remaining</span></div></div><div className="progress-track"><span style={{ width: `${calorieProgress}%` }} /></div></article>

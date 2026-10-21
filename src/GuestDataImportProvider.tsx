@@ -1,17 +1,15 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from './auth/useAuth'
 import { supabase } from './supabaseClient'
-import { useFoodEntries } from './FoodEntriesProvider'
-import { useUserData } from './UserDataProvider'
-import { ensureFoodSourceIds, importDismissedKey, readGuestImportPreview, type GuestImportPreview } from './guestDataImport'
+import { useFoodEntries } from './FoodEntriesContext'
+import { useUserData } from './UserDataContext'
+import { ensureFoodSourceIds, guestStorageChanged, importDismissedKey, readGuestImportPreview, type GuestImportPreview } from './guestDataImport'
+import { ImportContext, type ImportContextValue, type ImportOpenResult } from './GuestDataImportContext'
 import './GuestDataImport.css'
 
 type ImportSelection = { food: boolean; profile: boolean; goals: boolean }
 type ImportCounts = { imported: number; skipped: number; failed: number }
 type ImportResult = ImportCounts & { messages: string[] }
-type ImportOpenResult = { opened: boolean; reason?: 'not-ready' | 'no-eligible-data' }
-type ImportContextValue = { importing: boolean; openImport: () => ImportOpenResult }
-const ImportContext = createContext<ImportContextValue>({ importing: false, openImport: () => ({ opened: false, reason: 'not-ready' }) })
 const importTimeoutMs = 15000
 
 function withTimeout<T>(promise: PromiseLike<T>) {
@@ -20,7 +18,6 @@ function withTimeout<T>(promise: PromiseLike<T>) {
     promise.then((value) => { window.clearTimeout(timeoutId); resolve(value) }, (reason: unknown) => { window.clearTimeout(timeoutId); reject(reason) })
   })
 }
-
 function sameProfile(left: NonNullable<GuestImportPreview['profile']>, right: NonNullable<GuestImportPreview['profile']>) { return left.fullName === right.fullName && left.age === right.age && left.height === right.height && left.weight === right.weight }
 function sameGoals(left: NonNullable<GuestImportPreview['nutritionGoals']>, right: NonNullable<GuestImportPreview['nutritionGoals']>) { return left.calories === right.calories && left.protein === right.protein && left.carbohydrates === right.carbohydrates && left.fat === right.fat }
 
@@ -79,6 +76,18 @@ export function GuestDataImportProvider({ children }: { children: ReactNode }) {
 
   async function importData() {
     if (!user || !preview || selectedCount === 0 || importing) return
+    const latestPreview = readGuestImportPreview()
+    if (guestStorageChanged(preview)) {
+      setPreview(latestPreview)
+      setSelection({ food: latestPreview.foodEntries.length > 0, profile: latestPreview.profile !== null, goals: latestPreview.nutritionGoals !== null })
+      setProfileConfirmation(false)
+      setGoalsConfirmation(false)
+      setError('Guest data changed since this preview was shown. Review the refreshed preview before importing.')
+      setResult(null)
+      setVisible(true)
+      return
+    }
+    const importPreview = latestPreview
     const operation = ++operationRef.current
     const userId = user.id
     setImporting(true); setError(''); setResult(null); setProgress({ imported: 0, skipped: 0, failed: 0 })
@@ -89,12 +98,12 @@ export function GuestDataImportProvider({ children }: { children: ReactNode }) {
     try {
       let sourceIds: string[] = []
       if (selection.food) {
-        try { sourceIds = ensureFoodSourceIds(preview.foodEntries).sourceIds }
+        try { sourceIds = ensureFoodSourceIds(importPreview.foodEntries).sourceIds }
         catch (metadataError) { setError(metadataError instanceof Error ? metadataError.message : 'Guest import metadata could not be saved. No food entries were imported.'); setImporting(false); return }
       }
 
       if (selection.food) {
-        for (const [index, entry] of preview.foodEntries.entries()) {
+        for (const [index, entry] of importPreview.foodEntries.entries()) {
           if (!currentOperation(operation, userId)) return
           const sourceImportId = sourceIds[index]
           try {
@@ -117,24 +126,26 @@ export function GuestDataImportProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (selection.profile && preview.profile) {
-        if (profileConflict && !profileConfirmation) { updateProgress({ skipped: counts.skipped + 1 }); messages.push('Profile was skipped because the cloud profile differs and replacement was not confirmed.') }
-        else if (profile && sameProfile(preview.profile, profile)) updateProgress({ skipped: counts.skipped + 1 })
-        else if (!currentOperation(operation, userId) || !(await saveProfile(preview.profile))) { updateProgress({ failed: counts.failed + 1 }); messages.push('Profile could not be imported.') }
+      const importProfileConflict = Boolean(importPreview.profile && profile && !sameProfile(importPreview.profile, profile))
+      const importGoalsConflict = Boolean(importPreview.nutritionGoals && nutritionGoals && !sameGoals(importPreview.nutritionGoals, nutritionGoals))
+      if (selection.profile && importPreview.profile) {
+        if (importProfileConflict && !profileConfirmation) { updateProgress({ skipped: counts.skipped + 1 }); messages.push('Profile was skipped because the cloud profile differs and replacement was not confirmed.') }
+        else if (profile && sameProfile(importPreview.profile, profile)) updateProgress({ skipped: counts.skipped + 1 })
+        else if (!currentOperation(operation, userId) || !(await saveProfile(importPreview.profile))) { updateProgress({ failed: counts.failed + 1 }); messages.push('Profile could not be imported.') }
         else updateProgress({ imported: counts.imported + 1 })
       }
 
-      if (selection.goals && preview.nutritionGoals) {
-        if (goalsConflict && !goalsConfirmation) { updateProgress({ skipped: counts.skipped + 1 }); messages.push('Nutrition goals were skipped because the cloud goals differ and replacement was not confirmed.') }
-        else if (nutritionGoals && sameGoals(preview.nutritionGoals, nutritionGoals)) updateProgress({ skipped: counts.skipped + 1 })
-        else if (!currentOperation(operation, userId) || !(await saveNutritionGoals(preview.nutritionGoals))) { updateProgress({ failed: counts.failed + 1 }); messages.push('Nutrition goals could not be imported.') }
+      if (selection.goals && importPreview.nutritionGoals) {
+        if (importGoalsConflict && !goalsConfirmation) { updateProgress({ skipped: counts.skipped + 1 }); messages.push('Nutrition goals were skipped because the cloud goals differ and replacement was not confirmed.') }
+        else if (nutritionGoals && sameGoals(importPreview.nutritionGoals, nutritionGoals)) updateProgress({ skipped: counts.skipped + 1 })
+        else if (!currentOperation(operation, userId) || !(await saveNutritionGoals(importPreview.nutritionGoals))) { updateProgress({ failed: counts.failed + 1 }); messages.push('Nutrition goals could not be imported.') }
         else updateProgress({ imported: counts.imported + 1 })
       }
 
       if (currentOperation(operation, userId) && selection.food && counts.imported > 0) refreshEntries()
       if (currentOperation(operation, userId)) {
         setResult({ ...counts, messages })
-        const unresolvedConflict = (profileConflict && selection.profile && !profileConfirmation) || (goalsConflict && selection.goals && !goalsConfirmation)
+        const unresolvedConflict = (importProfileConflict && selection.profile && !profileConfirmation) || (importGoalsConflict && selection.goals && !goalsConfirmation)
         if (counts.failed === 0 && !unresolvedConflict) localStorage.setItem(importDismissedKey(userId), '1')
       }
     } catch (importError) {
@@ -149,6 +160,34 @@ export function GuestDataImportProvider({ children }: { children: ReactNode }) {
 }
 
 function ImportDialog({ preview, selection, setSelection, profileConflict, goalsConflict, profileConfirmation, setProfileConfirmation, goalsConfirmation, setGoalsConfirmation, importing, progress, result, error, onDismiss, onImport }: { preview: GuestImportPreview; selection: ImportSelection; setSelection: (value: ImportSelection) => void; profileConflict: boolean; goalsConflict: boolean; profileConfirmation: boolean; setProfileConfirmation: (value: boolean) => void; goalsConfirmation: boolean; setGoalsConfirmation: (value: boolean) => void; importing: boolean; progress: ImportCounts; result: ImportResult | null; error: string; onDismiss: () => void; onImport: () => void }) {
+  const importingRef = useRef(importing)
+  const onDismissRef = useRef(onDismiss)
+  useEffect(() => { importingRef.current = importing }, [importing])
+  useEffect(() => { onDismissRef.current = onDismiss }, [onDismiss])
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const dialog = document.querySelector<HTMLElement>('.guest-import-dialog')
+    dialog?.querySelector<HTMLButtonElement>('.guest-import-close')?.focus()
+    const getFocusableElements = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])') ?? []).filter((element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true')
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        if (!importingRef.current) onDismissRef.current()
+        return
+      }
+      if (event.key !== 'Tab' || !dialog) return
+      const focusable = getFocusableElements()
+      if (focusable.length === 0) { event.preventDefault(); return }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      if (previouslyFocused?.isConnected) previouslyFocused.focus()
+    }
+  }, [])
   const totalSelected = (selection.food ? preview.foodEntries.length : 0) + Number(selection.profile && preview.profile !== null) + Number(selection.goals && preview.nutritionGoals !== null)
   const done = progress.imported + progress.skipped + progress.failed
   return <div className="guest-import-backdrop" role="presentation"><section className="guest-import-dialog" role="dialog" aria-modal="true" aria-labelledby="guest-import-title"><div className="guest-import-header"><div><p className="dashboard-kicker">Optional transfer</p><h2 id="guest-import-title">Bring your guest data with you?</h2></div><button type="button" className="guest-import-close" onClick={onDismiss} disabled={importing} aria-label="Close import dialog">×</button></div><p className="guest-import-intro">Your browser has data from guest mode. Choose what you want to copy to this account. Your original browser data will not be changed.</p>
@@ -166,5 +205,3 @@ function ImportDialog({ preview, selection, setSelection, profileConflict, goals
     <div className="guest-import-actions"><button type="button" className="guest-import-secondary" onClick={onDismiss} disabled={importing}>Not Now</button><button type="button" className="guest-import-primary" onClick={onImport} disabled={importing || totalSelected === 0}> {importing ? 'Importing…' : result?.failed ? 'Retry Import' : 'Import My Data'}</button></div>
   </section></div>
 }
-
-export function useGuestDataImport() { return useContext(ImportContext) }

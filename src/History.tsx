@@ -2,8 +2,8 @@ import './History.css'
 import DashboardSidebar from './DashboardSidebar'
 import { calculateNutritionTotals, dateKey, getEntriesForDate } from './foodData'
 import { FoodEntriesStatus } from './FoodEntriesStatus'
-import { useFoodEntries } from './FoodEntriesProvider'
-import { useUserData } from './UserDataProvider'
+import { useFoodEntries } from './FoodEntriesContext'
+import { useUserData } from './UserDataContext'
 
 type DayRecord = { key: string; date: Date; calories: number; hasEntries: boolean }
 
@@ -23,9 +23,9 @@ function getLastSevenDays(entries: ReturnType<typeof useFoodEntries>['entries'])
 }
 
 function History() {
-  const { entries, loading: foodLoading, error: foodError } = useFoodEntries()
-  const { nutritionGoals: goals, loading: userDataLoading, error: userDataError } = useUserData()
-  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell history-shell"><DashboardSidebar active="history" /><main className="dashboard-main history-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <p className="storage-warning" role="alert">{userDataError}</p>}{!userDataLoading && !userDataError && !goals && <p className="storage-warning" role="alert">Your nutrition goals are unavailable. Please refresh and try again.</p>}</main></div>
+  const { entries, loading: foodLoading, error: foodError, refreshEntries } = useFoodEntries()
+  const { nutritionGoals: goals, loading: userDataLoading, error: userDataError, retryUserData } = useUserData()
+  if (userDataLoading || !goals || userDataError) return <div className="dashboard-shell history-shell"><DashboardSidebar active="history" /><main className="dashboard-main history-main">{userDataLoading && <p role="status">Loading your nutrition goals…</p>}{userDataError && <div className="storage-warning" role="alert"><span>{userDataError}</span><button type="button" onClick={retryUserData}>Try again</button></div>}{!userDataLoading && !userDataError && !goals && <p className="storage-warning" role="alert">Your nutrition goals are unavailable. Please refresh and try again.</p>}</main></div>
   const days = getLastSevenDays(entries)
   const chartMax = Math.max(goals.calories, ...days.map((day) => day.calories))
   const todayKey = days[days.length - 1]?.key
@@ -36,7 +36,7 @@ function History() {
       <main className="dashboard-main history-main">
         <header className="history-header"><div><p className="dashboard-kicker">Look back at your progress</p><h1>History</h1><p className="history-description">See how your daily calorie intake has changed over the last seven days.</p></div></header>
 
-        <FoodEntriesStatus loading={foodLoading} error={foodError} />
+        <FoodEntriesStatus loading={foodLoading} error={foodError} onRetry={refreshEntries} />
         {!foodLoading && !foodError && <>
         <section className="history-chart-card" aria-labelledby="calorie-history-title">
           <div className="history-section-heading"><div><p className="dashboard-kicker">Last 7 days</p><h2 id="calorie-history-title">Calorie History</h2></div><span className="history-goal-label">Goal: {goals.calories.toLocaleString()} kcal</span></div>
