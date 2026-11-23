@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 import logoSrc from './assets/caloried-logo.svg'
 import cookieSrc from './assets/cookie-bite.svg'
@@ -116,13 +117,18 @@ function LandingPage() {
 }
 
 function App() {
-  if (window.location.pathname === '/dashboard') return <Dashboard />
-  if (window.location.pathname === '/food-log') return <FoodLog />
-  if (window.location.pathname === '/history') return <History />
-  if (window.location.pathname === '/profile') return <Profile />
-  if (window.location.pathname === '/settings') return <Settings />
-  if (window.location.pathname === '/help') return <Help />
-  return <LandingPage />
+  return (
+    <>
+      {window.location.pathname === '/dashboard' && <Dashboard />}
+      {window.location.pathname === '/food-log' && <FoodLog />}
+      {window.location.pathname === '/history' && <History />}
+      {window.location.pathname === '/profile' && <Profile />}
+      {window.location.pathname === '/settings' && <Settings />}
+      {window.location.pathname === '/help' && <Help />}
+      {window.location.pathname === '/' && <LandingPage />}
+      <Analytics />
+    </>
+  )
 }
 
 export default App
